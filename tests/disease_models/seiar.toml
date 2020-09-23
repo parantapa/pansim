@@ -1,0 +1,44 @@
+version = 1.0
+
+unit_time = 300.0
+
+states = [ "succ", "expo", "isymp", "iasymp", "recov" ]
+groups = [ "base" ]
+behaviors = [ "base", "mask", "sdist", "mask_sdist" ]
+
+exposed_state = "expo"
+
+[succeptibility]
+
+succ.base = 0.5
+
+[infectivity]
+
+isymp.base = 0.9
+iasymp.base = 0.9
+
+[progression]
+
+expo.base = { isymp = 0.5, iasymp = 0.5 }
+isymp.base = { recov = 1.0 }
+iasymp.base = { recov = 1.0 }
+
+[dwell_time]
+
+expo.base = { isymp = "dist1", iasymp = "dist1" }
+isymp.base = { recov = "dist1" }
+iasymp.base = { recov = "dist1" }
+
+[behavior_modifier]
+
+base = { base = 1.0, mask = 0.5, sdist = 0.5, mask_sdist = 0.25 }
+mask = { base = 0.5, mask = 0.25, sdist = 0.25, mask_sdist = 0.15625 }
+sdist = { base = 0.5, mask = 0.25, sdist = 0.25, mask_sdist = 0.15625 }
+mask_sdist = { base = 0.25, mask = 0.15625, sdist = 0.15625, mask_sdist = 0.00390625 }
+
+[distribution.dist1]
+
+dist = "categorical"
+categories = [1, 2, 3]
+p = [0.3, 0.6, 0.1]
+
