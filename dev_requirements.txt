@@ -1,0 +1,11 @@
+pylint
+pyflakes
+pydocstyle
+black
+pytest
+pytest-cov
+sphinx
+line_profiler
+memory_profiler
+snakeviz
+ipython
