@@ -43,6 +43,13 @@ setup(
     install_requires=[
         "click",
         "click_completion",
+        "numpy",
+        "pandas",
+        "pyarrow",
+        "toml",
+        "Vose-Alias-Method",
+        "tqdm",
+        "py4j",
     ],
 
     url="http://github.com/nssac/pansim",
