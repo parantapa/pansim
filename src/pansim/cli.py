@@ -6,6 +6,7 @@ import click_completion
 from . import cli
 
 from .simplesim import simplesim
+from .simplesim_java import simplesim_java
 
 if __name__ == "__main__":
     click_completion.init()
