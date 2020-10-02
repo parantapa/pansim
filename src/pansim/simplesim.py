@@ -31,11 +31,10 @@ def simplesim():
         state_df = behavior_model.next_state_df
         visit_df = behavior_model.next_visit_df
 
-        print("Computing epicurve.")
+        print("Computing epicurve")
         state_count = state_df.groupby("current_state").agg({"pid": len}).pid
         epirow = [state_count.get(i, 0) for i in range(disease_model.n_states)]
         epicurve.append(epirow)
-
 
         it_2 = visit_df.groupby("lid")
         it_2 = tqdm(it_2, desc="Transmission step", unit="location")

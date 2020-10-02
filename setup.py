@@ -2,6 +2,9 @@
 
 from setuptools import setup
 
+import numpy
+from Cython.Build import cythonize
+
 package_name = "pansim"
 description = "PanSim is a distributed pandemic simulator."
 
@@ -19,6 +22,9 @@ Topic :: Scientific/Engineering
 Topic :: System :: Distributed Computing
 """.strip().split("\n")
 
+include_path = [numpy.get_include()]
+ext_modules = cythonize("src/pansim/*.pyx")
+
 setup(
     name=package_name,
     description=description,
@@ -31,6 +37,11 @@ setup(
 
     packages=[package_name],
     package_dir={'': 'src'},
+
+    ext_modules=ext_modules,
+    include_dirs=include_path,
+
+    zip_safe=False,
 
     entry_points="""
         [console_scripts]
@@ -50,6 +61,7 @@ setup(
         "Vose-Alias-Method",
         "tqdm",
         "py4j",
+        "cython",
     ],
 
     url="http://github.com/nssac/pansim",

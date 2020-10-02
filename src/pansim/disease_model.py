@@ -7,17 +7,12 @@ import numpy as np
 import pandas as pd
 
 from .sampler import FixedSampler, CategoricalSampler
+from .visit_computation_py import compute_visit_output_py, START_EVENT, END_EVENT
 
 SEED_MIN = np.iinfo(np.int64).min
 SEED_MAX = np.iinfo(np.int64).max
 NULL_STATE = -1
 NULL_DWELL_TIME = -1
-
-
-def padd(p, q):
-    """Add the probabilities."""
-    return 1.0 - (1.0 - p) * (1.0 - q)
-
 
 def psum(ps, axis=-1):
     """Add the probabilites."""
@@ -25,11 +20,6 @@ def psum(ps, axis=-1):
     ps = np.product(ps, axis=axis)
     ps = 1.0 - ps
     return ps
-
-
-def pmul(p, n):
-    """Return the multiple of the given probabilty."""
-    return 1.0 - (1.0 - p) ** n
 
 
 class DiseaseModel:
@@ -57,76 +47,112 @@ class DiseaseModel:
         self.n_groups = len(model_dict["groups"])
         self.n_behaviors = len(model_dict["behaviors"])
 
-        self.succeptable_states = [self.name_state[s] for s in model_dict["succeptibility"]]
-        self.infectious_states = [self.name_state[s] for s in model_dict["infectivity"]]
-
-        self.succeptable_state_index = {s: i for i, s in enumerate(self.succeptable_states)}
-        self.infectious_state_index = {s: i for i, s in enumerate(self.infectious_states)}
-
-        self.n_succeptable_states = len(self.succeptable_states)
-        self.n_infectious_states = len(self.infectious_states)
-
-        self.unit_time = model_dict["unit_time"]
+        self.unit_time = float(model_dict["unit_time"])
         self.exposed_state = self.name_state[model_dict["exposed_state"]]
 
-        self.transmission_prob = self._compute_t_prob()
+        self.succeptibility = self._compute_succeptibility()
+        self.infectivity = self._compute_infectivity()
+        self.transmission_prob = self._compute_transmission_prob()
+
         self.progression = self._compute_progression()
         self.dwell_time = self._compute_dwell_time()
 
-    def _compute_t_prob(self):
+    def _compute_succeptibility(self):
+        """Compute the succeptibility matrix."""
+        shape = (self.n_states, self.n_groups)
+        succeptibility = np.zeros(shape, dtype=np.float64)
+
+        states = self.model_dict["states"]
+        groups = self.model_dict["groups"]
+        sdict = self.model_dict["succeptibility"]
+
+        for state, sname in enumerate(states):
+            for group, gname in enumerate(groups):
+                try:
+                    succeptibility[state][group] = sdict[sname][gname]
+                except KeyError:
+                    pass
+
+        return succeptibility
+
+    def _compute_infectivity(self):
+        """Compute the infectivity matrix."""
+        shape = (self.n_states, self.n_groups)
+        infectivity = np.zeros(shape, dtype=np.float64)
+
+        states = self.model_dict["states"]
+        groups = self.model_dict["groups"]
+        idict = self.model_dict["infectivity"]
+
+        for state, sname in enumerate(states):
+            for group, gname in enumerate(groups):
+                try:
+                    infectivity[state][group] = idict[sname][gname]
+                except KeyError:
+                    pass
+
+        return infectivity
+
+    def _compute_transmission_prob(self):
         """Populate self.transmission_prob."""
         shape = (
-            self.n_succeptable_states,
+            self.n_states,
             self.n_groups,
             self.n_behaviors,
-            self.n_infectious_states,
+            self.n_states,
             self.n_groups,
             self.n_behaviors,
         )
         transmission_prob = np.zeros(shape, dtype=np.float64)
 
-        for ss_i in range(self.n_succeptable_states):
-            for is_i in range(self.n_infectious_states):
-                for sg_i in range(self.n_groups):
-                    for ig_i in range(self.n_groups):
-                        for sb_i in range(self.n_behaviors):
-                            for ib_i in range(self.n_behaviors):
+        states = self.model_dict["states"]
+        groups = self.model_dict["groups"]
+        behaviors = self.model_dict["behaviors"]
 
-                                ss_name = self.model_dict["states"][self.succeptable_states[ss_i]]
-                                is_name = self.model_dict["states"][self.infectious_states[is_i]]
-                                sg_name = self.model_dict["groups"][sg_i]
-                                ig_name = self.model_dict["groups"][ig_i]
-                                sb_name = self.model_dict["behaviors"][sb_i]
-                                ib_name = self.model_dict["behaviors"][ib_i]
+        sdict = self.model_dict["succeptibility"]
+        idict = self.model_dict["infectivity"]
+        bdict = self.model_dict["behavior_modifier"]
 
-                                try:
-                                    succeptibility = self.model_dict["succeptibility"][ss_name][sg_name]
-                                except KeyError:
-                                    succeptibility = 0.0
+        for state_s, sname_s in enumerate(states):
+            for group_s, gname_s in enumerate(groups):
+                for behavior_s, bname_s in enumerate(behaviors):
+                    for state_i, sname_i in enumerate(states):
+                        for group_i, gname_i in enumerate(groups):
+                            for behavior_i, bname_i in enumerate(behaviors):
 
                                 try:
-                                    infectivity = self.model_dict["infectivity"][is_name][ig_name]
+                                    succ = sdict[sname_s][gname_s]
                                 except KeyError:
-                                    infectivity = 0.0
+                                    succ = 0.0
 
                                 try:
-                                    behavior_modifier = self.model_dict["behavior_modifier"][sb_name][ib_name]
+                                    infc = idict[sname_i][gname_i]
                                 except KeyError:
-                                    behavior_modifier = 1.0
+                                    infc = 0.0
 
-                                prob = succeptibility * infectivity * behavior_modifier
-                                transmission_prob[ss_i][sg_i][sb_i][is_i][ig_i][ib_i] = prob
+                                try:
+                                    bmod = bdict[bname_s][bname_i]
+                                except KeyError:
+                                    bmod = 1.0
+
+                                prob = succ * infc * bmod
+                                transmission_prob[state_s][group_s][behavior_s][
+                                    state_i
+                                ][group_i][behavior_i] = prob
 
         return transmission_prob
 
     def _compute_progression(self):
         """Return the progression data structure."""
+        groups = self.model_dict["groups"]
+        pdict = self.model_dict["progression"]
+
         progression = {}
-        for sname, v1 in self.model_dict["progression"].items():
+        for sname, v1 in pdict.items():
             state = self.name_state[sname]
             progression[state] = {}
 
-            for gname in self.model_dict["groups"]:
+            for gname in groups:
                 v2 = v1[gname]
                 group = self.name_group[gname]
 
@@ -136,8 +162,10 @@ class DiseaseModel:
 
     def _compute_distibutions(self):
         """Return the defined distributions."""
+        ddict = self.model_dict["distribution"]
+
         distributions = {}
-        for dname, v1 in self.model_dict["distribution"].items():
+        for dname, v1 in ddict.items():
             if v1["dist"] == "categorical":
                 d = zip(v1["categories"], v1["p"])
                 d = dict(d)
@@ -153,12 +181,15 @@ class DiseaseModel:
 
     def _compute_dwell_time(self):
         """Return the dwell time data structure."""
+        groups = self.model_dict["groups"]
+        ddict = self.model_dict["dwell_time"]
+
         distributions = self._compute_distibutions()
         dwell_time = {}
-        for csname, v1 in self.model_dict["dwell_time"].items():
+        for csname, v1 in ddict.items():
             cs = self.name_state[csname]
             dwell_time[cs] = {}
-            for gname in self.model_dict["groups"]:
+            for gname in groups:
                 v2 = v1[gname]
                 g = self.name_group[gname]
                 dwell_time[cs][g] = {}
@@ -169,101 +200,66 @@ class DiseaseModel:
 
     def compute_visit_output(self, visits, visual_attributes):
         """Compute the visit results."""
-        v_state = visits.state
-        v_group = visits.group
-        v_behavior = visits.behavior
-
-        v_attr = {attr: visits[attr] for attr in visual_attributes}
-
-        START, END = 1, 0
-        events = []
-        for index, (start, end) in enumerate(zip(visits.start_time, visits.end_time)):
-            events.append((start, START, index))
-            events.append((end, END, index))
-        events.sort()
+        # pd.set_option("display.max_rows", None, "display.max_columns", None)
+        # pd.options.display.width = 0
+        # print(visits.reset_index())
 
         n_visits = len(visits)
+        n_attributes = len(visual_attributes)
 
-        cur_all_indexes = set()
-        cur_succeptible_indexes = set()
-        cur_infectious_indexes = set()
-        cur_attr_count = {attr: 0 for attr in visual_attributes}
-        cur_occupancy = 0
-        n_contacts = np.zeros(n_visits, dtype=np.int32)
-        attr_seen = {
-            attr: np.zeros(n_visits, dtype=np.int32) for attr in visual_attributes
-        }
-        inf_prob = np.zeros(n_visits, dtype=np.float64)
-        prev_time = None
-        for cur_time, event_type, index in events:
-            # Update the infection probabilites
-            if prev_time is not None:
-                duration = cur_time - prev_time
+        transmission_prob = self.transmission_prob
+        succeptibility = self.succeptibility
+        infectivity = self.infectivity
+        unit_time = self.unit_time
 
-                if duration > 0 and cur_succeptible_indexes and cur_infectious_indexes:
-                    duration = float(duration) / self.unit_time
+        e_event_visit = np.hstack([
+            np.arange(n_visits, dtype=np.int64),
+            np.arange(n_visits, dtype=np.int64)
+        ])
+        e_event_time = np.hstack([
+            visits.start_time.to_numpy(dtype=np.int32),
+            visits.end_time.to_numpy(dtype=np.int32)
+        ])
+        e_event_type = np.hstack([
+            np.full(n_visits, START_EVENT, dtype=np.int8),
+            np.full(n_visits, END_EVENT, dtype=np.int8),
+        ])
+        e_indices_sorted = np.lexsort([e_event_type, e_event_time])
 
-                    # Increase the infection probability of every succeptable person
-                    # Once per infectious person
-                    for s_index in cur_succeptible_indexes:
-                        ss_i = self.succeptable_state_index[v_state.iat[s_index]]
-                        sg_i = v_group.iat[s_index]
-                        sb_i = v_behavior.iat[s_index]
+        v_state = visits.state.to_numpy(dtype=np.int8)
+        v_group = visits.group.to_numpy(dtype=np.int8)
+        v_behavior = visits.behavior.to_numpy(dtype=np.int8)
+        v_attributes = visits[visual_attributes].to_numpy(dtype=np.int8).T
 
-                        for i_row in cur_infectious_indexes:
-                            is_i = self.infectious_state_index[v_state.iat[i_row]]
-                            ig_i = v_group.iat[i_row]
-                            ib_i = v_behavior.iat[i_row]
+        vo_inf_prob = np.zeros(n_visits, dtype=np.float64)
+        vo_n_contacts = np.zeros(n_visits, dtype=np.int32)
+        vo_attributes = np.zeros((n_attributes, n_visits), dtype=np.int32)
 
-                            p = self.transmission_prob[ss_i][sg_i][sb_i][is_i][ig_i][
-                                ib_i
-                            ]
-                            p = pmul(p, duration)
-                            inf_prob[s_index] = padd(inf_prob[s_index], p)
-
-            if event_type == START:
-                for attr in visual_attributes:
-                    attr_seen[attr][index] = cur_attr_count[attr]
-                n_contacts[index] = cur_occupancy
-
-                for attr in visual_attributes:
-                    if v_attr[attr].iat[index]:
-                        for cindex in cur_all_indexes:
-                            attr_seen[attr][cindex] += 1
-                for cindex in cur_all_indexes:
-                    n_contacts[cindex] += 1
-
-                cur_all_indexes.add(index)
-                s = v_state.iat[index]
-                if s in self.succeptable_state_index:
-                    cur_succeptible_indexes.add(index)
-                if s in self.infectious_state_index:
-                    cur_infectious_indexes.add(index)
-
-                for attr in visual_attributes:
-                    if v_attr[attr].iat[index]:
-                        cur_attr_count[attr] += 1
-                cur_occupancy += 1
-            else:  # event_type == END
-                cur_all_indexes.remove(index)
-                cur_succeptible_indexes.discard(index)
-                cur_infectious_indexes.discard(index)
-
-                for attr in visual_attributes:
-                    if v_attr[attr].iat[index]:
-                        cur_attr_count[attr] -= 1
-                cur_occupancy -= 1
-
-            prev_time = cur_time
+        compute_visit_output_py(
+            transmission_prob,
+            succeptibility,
+            infectivity,
+            unit_time,
+            e_indices_sorted,
+            e_event_visit,
+            e_event_time,
+            e_event_type,
+            v_state,
+            v_group,
+            v_behavior,
+            v_attributes,
+            vo_inf_prob,
+            vo_n_contacts,
+            vo_attributes
+        )
 
         visit_outputs = {
             "pid": visits.pid,
-            "inf_prob": inf_prob,
-            "n_contacts": n_contacts,
+            "inf_prob": vo_inf_prob,
+            "n_contacts": vo_n_contacts,
         }
-        for attr in visual_attributes:
-            attr_seen_col = attr_seen[attr]
-            visit_outputs[attr] = attr_seen_col
+        for i_attr, attr in enumerate(visual_attributes):
+            visit_outputs[attr] = vo_attributes[i_attr, :]
         visit_outputs = pd.DataFrame(visit_outputs, index=visits.index)
 
         return visit_outputs
