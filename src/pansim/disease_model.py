@@ -286,22 +286,18 @@ class DiseaseModel:
 
         return visit_outputs
 
-    #@profile
+    # @profile
     def compute_progression_output(self, state, visit_outputs, tick_time):
         """Compute the progression outputs."""
-        pid = state.pid
-        group = state.group
-        current_state = state.current_state
-        next_state = state.next_state
-        dwell_time = state.dwell_time
-        seed = state.seed
+        (pid, group, current_state, next_state, dwell_time, seed) = state
 
         random.seed(seed)
 
         # If we are not already in transition
         if dwell_time == NULL_DWELL_TIME:
             # Compute the cumulative infection probability
-            inf_p = psum(visit_outputs.inf_prob.to_numpy())
+            inf_p = visit_outputs.inf_prob.to_numpy()
+            inf_p = psum(inf_p)
 
             # Check if we got exposed
             if inf_p > 0:
@@ -328,7 +324,5 @@ class DiseaseModel:
         # Get a new seed
         seed = random.randint(SEED_MIN, SEED_MAX)
 
-        new_state = [pid, group, current_state, next_state, dwell_time, seed]
-        return pd.Series(
-            new_state, index=state.index, dtype=state.dtype, name=state.name
-        )
+        new_state = (pid, group, current_state, next_state, dwell_time, seed)
+        return new_state

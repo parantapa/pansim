@@ -50,15 +50,16 @@ def simplesim():
         visit_output_df = pd.DataFrame(visit_outputs)
 
         state_df = state_df.set_index("pid", drop=False)
+        columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
 
         it_3 = visit_output_df.groupby("pid")
         it_3 = tqdm(it_3, desc="Progression step", unit="person")
         new_states = []
         for pid, group in it_3:
-            cur_state = state_df.loc[pid]
+            cur_state = (state_df.at[pid, col] for col in columns)
             new_state = disease_model.compute_progression_output(cur_state, group, tick_time)
             new_states.append(new_state)
-        new_state_df = pd.DataFrame(new_states)
+        new_state_df = pd.DataFrame(new_states, columns=columns)
 
         print("Running behavior model")
         behavior_model.run_behavior_model(new_state_df, visit_output_df)
