@@ -7,7 +7,20 @@ import numpy as np
 import pandas as pd
 
 from .sampler import FixedSampler, CategoricalSampler
-from .visit_computation_py import compute_visit_output_py, START_EVENT, END_EVENT
+# from .visit_computation_py import (
+#         compute_visit_output_py as compute_visit_output,
+#         START_EVENT,
+#         END_EVENT
+# )
+from .visit_computation_cy import (
+        compute_visit_output_cy as compute_visit_output,
+        START_EVENT,
+        END_EVENT
+)
+
+# from line_profiler import LineProfiler
+# profile = LineProfiler()
+
 
 SEED_MIN = np.iinfo(np.int64).min
 SEED_MAX = np.iinfo(np.int64).max
@@ -56,6 +69,9 @@ class DiseaseModel:
 
         self.progression = self._compute_progression()
         self.dwell_time = self._compute_dwell_time()
+
+    # def __del__(self):
+    #     profile.dump_stats("lineprof.lprof")
 
     def _compute_succeptibility(self):
         """Compute the succeptibility matrix."""
@@ -198,7 +214,8 @@ class DiseaseModel:
                     dwell_time[cs][g][ns] = distributions[dname]
         return dwell_time
 
-    def compute_visit_output(self, visits, visual_attributes):
+    #@profile
+    def compute_visit_output(self, visits, visual_attributes, lid):
         """Compute the visit results."""
         # pd.set_option("display.max_rows", None, "display.max_columns", None)
         # pd.options.display.width = 0
@@ -229,13 +246,15 @@ class DiseaseModel:
         v_state = visits.state.to_numpy(dtype=np.int8)
         v_group = visits.group.to_numpy(dtype=np.int8)
         v_behavior = visits.behavior.to_numpy(dtype=np.int8)
-        v_attributes = visits[visual_attributes].to_numpy(dtype=np.int8).T
+        
+        v_attributes = [visits[attr].to_numpy(dtype=np.int8) for attr in visual_attributes]
+        v_attributes = np.vstack(v_attributes)
 
         vo_inf_prob = np.zeros(n_visits, dtype=np.float64)
         vo_n_contacts = np.zeros(n_visits, dtype=np.int32)
         vo_attributes = np.zeros((n_attributes, n_visits), dtype=np.int32)
 
-        compute_visit_output_py(
+        compute_visit_output(
             transmission_prob,
             succeptibility,
             infectivity,
@@ -253,17 +272,21 @@ class DiseaseModel:
             vo_attributes
         )
 
+        v_pid = visits.pid.to_numpy(dtype=np.int64)
+        v_lid = np.full(n_visits, lid, dtype=np.int64)
+
         visit_outputs = {
-            "pid": visits.pid,
+            "pid": v_pid,
+            "lid": v_lid,
             "inf_prob": vo_inf_prob,
             "n_contacts": vo_n_contacts,
         }
         for i_attr, attr in enumerate(visual_attributes):
             visit_outputs[attr] = vo_attributes[i_attr, :]
-        visit_outputs = pd.DataFrame(visit_outputs, index=visits.index)
 
         return visit_outputs
 
+    #@profile
     def compute_progression_output(self, state, visit_outputs, tick_time):
         """Compute the progression outputs."""
         pid = state.pid

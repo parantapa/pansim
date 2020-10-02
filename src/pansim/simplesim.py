@@ -1,7 +1,9 @@
 """Simple single threaded simulation."""
 
 import os
+from collections import defaultdict
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -38,12 +40,14 @@ def simplesim():
 
         it_2 = visit_df.groupby("lid")
         it_2 = tqdm(it_2, desc="Transmission step", unit="location")
-        visit_outputs = []
+        visit_outputs = defaultdict(list)
         for lid, group in it_2:
-            visit_output = disease_model.compute_visit_output(group, behavior_model.attr_names)
-            visit_output["lid"] = lid
-            visit_outputs.append(visit_output)
-        visit_output_df = pd.concat(visit_outputs, axis=0)
+            visit_output = disease_model.compute_visit_output(group, behavior_model.attr_names, lid)
+            for k, v in visit_output.items():
+                visit_outputs[k].append(v)
+        visit_outputs.default_factory = None
+        visit_outputs = {k: np.hstack(vs) for k, vs in visit_outputs.items()}
+        visit_output_df = pd.DataFrame(visit_outputs)
 
         state_df = state_df.set_index("pid", drop=False)
 
