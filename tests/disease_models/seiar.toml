@@ -10,24 +10,25 @@ exposed_state = "expo"
 
 [succeptibility]
 
-succ.base = 0.5
+succ.base = 0.9
 
 [infectivity]
 
+expo.base=0.45
 isymp.base = 0.9
-iasymp.base = 0.9
+iasymp.base = 0.675
 
 [progression]
 
-expo.base = { isymp = 0.5, iasymp = 0.5 }
+expo.base = { isymp = 0.6, iasymp = 0.4 }
 isymp.base = { recov = 1.0 }
 iasymp.base = { recov = 1.0 }
 
 [dwell_time]
 
 expo.base = { isymp = "dist1", iasymp = "dist1" }
-isymp.base = { recov = "dist1" }
-iasymp.base = { recov = "dist1" }
+isymp.base = { recov = "dist2" }
+iasymp.base = { recov = "dist2" }
 
 [behavior_modifier]
 
@@ -38,7 +39,11 @@ mask_sdist = { base = 0.25, mask = 0.15625, sdist = 0.15625, mask_sdist = 0.0039
 
 [distribution.dist1]
 
-dist = "categorical"
-categories = [1, 2, 3]
-p = [0.3, 0.6, 0.1]
+dist = "fixed"
+value = 6
 
+
+[distribution.dist2]
+
+dist = "fixed"
+value = 14
