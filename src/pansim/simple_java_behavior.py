@@ -1,11 +1,31 @@
 """Simple behavior model."""
 
 import os
+import time
 
 import pyarrow as pa
-from py4j.java_gateway import JavaGateway
+import py4j.java_gateway
+import py4j.protocol
 
 from .data_schema import make_visit_output_schema, make_state_schema
+
+
+def get_gateway():
+    """Retry getting gateway until retries are exhausted."""
+    max_tries = int(os.environ.get("GATEWAY_CONNECTION_RETRIES", 300))
+
+    print("Trying to connect to behavior gateway.")
+    tries = 0
+    while tries < max_tries:
+        try:
+            gateway = py4j.java_gateway.JavaGateway(eager_load=True)
+            print("Successfully connected to behavior gateway.")
+            return gateway
+        except py4j.protocol.Py4JNetworkError:
+            time.sleep(1)
+            tries += 1
+    raise RuntimeError("Couldn't connect to behavior gateway.")
+
 
 class SimpleJavaBehaviorModel:
     """Simple behavior model."""
@@ -13,9 +33,15 @@ class SimpleJavaBehaviorModel:
     def __init__(self):
         """Initialize."""
         self.attr_names = os.environ["VISUAL_ATTRIBUTES"].strip().split(",")
-        self.gateway = JavaGateway()
+        self.gateway = None
         self.visit_output_schema = make_visit_output_schema(self.attr_names)
         self.state_schema = make_state_schema()
+
+        self.gateway = get_gateway()
+
+    def __del__(self):
+        """Cleanup."""
+        self.close()
 
     @property
     def next_state_df(self):
@@ -53,3 +79,18 @@ class SimpleJavaBehaviorModel:
         visit_output_df_raw = sink.getvalue().to_pybytes()
 
         self.gateway.entry_point.runBehaviorModel(cur_state_df_raw, visit_output_df_raw)
+
+    def cleanup(self):
+        """Cleanup resources on the behavior server."""
+        self.gateway.entry_point.cleanup()
+
+    def close(self):
+        """Close the JVM Gateway."""
+        if self.gateway is not None:
+            self.gateway.close()
+            self.gateway = None
+
+    def shutdown(self):
+        """Shutdown the gateway server."""
+        self.gateway.shutdown()
+

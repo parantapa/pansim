@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 export SEED=42
-export NUM_TICKS=7
+export NUM_TICKS=1
 export TICK_TIME=1
 export MAX_VISITS=204000
 export VISUAL_ATTRIBUTES=coughing,mask,sdist

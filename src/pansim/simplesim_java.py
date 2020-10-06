@@ -64,6 +64,12 @@ def simplesim_java():
         print("Running behavior model")
         behavior_model.run_behavior_model(new_state_df, visit_output_df)
 
+    print("Sending cleanup signal to the behavior model")
+    behavior_model.cleanup()
+
+    print("Sutting down the behavior server")
+    behavior_model.shutdown()
+
     print("Computing final epicurve.")
     state_count = new_state_df.groupby("current_state").agg({"pid": len}).pid
     epirow = [state_count.get(i, 0) for i in range(disease_model.n_states)]

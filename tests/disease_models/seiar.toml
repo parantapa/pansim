@@ -42,7 +42,6 @@ mask_sdist = { base = 0.25, mask = 0.15625, sdist = 0.15625, mask_sdist = 0.0039
 dist = "fixed"
 value = 6
 
-
 [distribution.dist2]
 
 dist = "fixed"
