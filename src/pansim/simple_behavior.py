@@ -40,12 +40,23 @@ def setup_visit_df(visit_df, state_df, attr_names):
 
     return visit_df
 
+def subset_pid(df, pids):
+    """Get the subset of the dataframe for given pids."""
+    df = df[df.pid.isin(pids)]
+    df = df.copy()
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+
 class SimpleBehaviorModel:
     """Simple behavior model."""
 
-    def __init__(self):
+    def __init__(self, seed=None, pids=None):
         """Initialize."""
-        self.seed = int(os.environ["SEED"])
+        if seed is None:
+            self.seed = int(os.environ["SEED"])
+        else:
+            self.seed = seed
         self.attr_names = os.environ["VISUAL_ATTRIBUTES"].strip().split(",")
 
         self.start_state_file = os.environ["START_STATE_FILE"]
@@ -63,6 +74,13 @@ class SimpleBehaviorModel:
         for fname in self.visit_files:
             df = csv.read_csv(fname).to_pandas()
             self.visit_dfs_raw.append(df)
+
+        if pids is not None:
+            pids = set(pids)
+
+            self.start_state_df = subset_pid(self.start_state_df, pids)
+            for i in range(len(self.visit_dfs_raw)):
+                self.visit_dfs_raw[i] = subset_pid(self.visit_dfs_raw[i], pids)
 
         self.next_tick = 0
 
