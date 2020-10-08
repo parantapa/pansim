@@ -12,6 +12,9 @@ from . import cli
 
 def do_partition(visit_df, n_nodes, n_cpu_per_node):
     """Parition locations and persons."""
+    n_nodes = int(n_nodes)
+    n_cpu_per_node = int(n_cpu_per_node)
+
     print("Creating lid <--> pid mappings")
     lid_pids = defaultdict(set)
     pid_lids = defaultdict(set)
@@ -48,9 +51,9 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
         part = lid_part[lid]
         node = part // n_cpu_per_node
         cpu = part % n_cpu_per_node
-        row = (lid, part, node, cpu)
+        row = (lid, node, cpu)
         data.append(row)
-    columns = ["lid", "part", "node", "cpu"]
+    columns = ["lid", "node", "cpu"]
     lid_part_df = pd.DataFrame(data, columns=columns)
 
     print("Assigning persons to partitions")
@@ -66,10 +69,10 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
         part = pid_part[pid]
         node = part // n_cpu_per_node
         cpu = part % n_cpu_per_node
-        row = (pid, part, node, cpu)
+        row = (pid, node, cpu)
         data.append(row)
-        columns = ["pid", "part", "node", "cpu"]
-        pid_part_df = pd.DataFrame(data, columns=columns)
+    columns = ["pid", "node", "cpu"]
+    pid_part_df = pd.DataFrame(data, columns=columns)
 
     return lid_part_df, pid_part_df
 
@@ -91,7 +94,7 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
 @click.option("-c", "--num-cpu-per-node", default=2, help="Number of cpus per node")
 @click.argument("visit-file", nargs=-1)
 def partition(
-    location_parition, person_partition, num_nodes, num_cpu_per_node, visit_file
+    location_partition, person_partition, num_nodes, num_cpu_per_node, visit_file
 ):
     """Parition the locations and persons onto cpus."""
     visit_df = []
@@ -103,8 +106,8 @@ def partition(
 
     lid_part_df, pid_part_df = do_partition(visit_df, num_nodes, num_cpu_per_node)
 
-    print("Writing ", location_parition)
-    lid_part_df.to_csv(location_parition, index=False)
+    print("Writing ", location_partition)
+    lid_part_df.to_csv(location_partition, index=False)
 
     print("Writing ", person_partition)
     pid_part_df.to_csv(person_partition, index=False)

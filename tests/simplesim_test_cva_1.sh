@@ -4,9 +4,8 @@
 set -Eeuo pipefail
 
 export SEED=42
-export NUM_TICKS=1
+export NUM_TICKS=14
 export TICK_TIME=1
-export MAX_VISITS=204000
 export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
 export DISEASE_MODEL_FILE="disease_models/seiar.toml"

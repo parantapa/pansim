@@ -128,3 +128,5 @@ def compute_visit_output_py(
                 cur_succ_indices.remove(i_visit)
             if infectivity[vs, vg] > 0.0:
                 cur_infc_indices.remove(i_visit)
+
+        prev_time = cur_time

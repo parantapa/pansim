@@ -4,7 +4,6 @@ import random
 
 import toml
 import numpy as np
-import pandas as pd
 
 from .sampler import FixedSampler, CategoricalSampler
 # from .visit_computation_py import (
@@ -64,8 +63,11 @@ class DiseaseModel:
         self.exposed_state = self.name_state[model_dict["exposed_state"]]
 
         self.succeptibility = self._compute_succeptibility()
+        # print(self.succeptibility)
         self.infectivity = self._compute_infectivity()
+        # print(self.infectivity)
         self.transmission_prob = self._compute_transmission_prob()
+        # print(self.transmission_prob)
 
         self.progression = self._compute_progression()
         self.dwell_time = self._compute_dwell_time()
@@ -156,6 +158,10 @@ class DiseaseModel:
                                     state_i
                                 ][group_i][behavior_i] = prob
 
+                                # if prob > 0:
+                                #     print(sname_s, gname_s, bname_s, sname_i, gname_i, bname_i, prob)
+
+
         return transmission_prob
 
     def _compute_progression(self):
@@ -193,6 +199,8 @@ class DiseaseModel:
                 distributions[dname] = d
             else:
                 raise ValueError("Only distributions supported are: categorical, fixed")
+
+        # print(distributions)
         return distributions
 
     def _compute_dwell_time(self):
@@ -212,6 +220,8 @@ class DiseaseModel:
                 for nsname, dname in v2.items():
                     ns = self.name_state[nsname]
                     dwell_time[cs][g][ns] = distributions[dname]
+
+        # print(dwell_time)
         return dwell_time
 
     #@profile
@@ -272,6 +282,9 @@ class DiseaseModel:
             vo_attributes
         )
 
+        # if np.count_nonzero(vo_inf_prob) > 0:
+        #     print(np.count_nonzero(vo_inf_prob)
+
         v_pid = visits.pid.to_numpy(dtype=np.int64)
         v_lid = np.full(n_visits, lid, dtype=np.int64)
 
@@ -290,6 +303,8 @@ class DiseaseModel:
     def compute_progression_output(self, state, visit_outputs, tick_time):
         """Compute the progression outputs."""
         (pid, group, current_state, next_state, dwell_time, seed) = state
+        # if current_state != 0:
+        #     print(state)
 
         random.seed(seed)
 
@@ -301,21 +316,26 @@ class DiseaseModel:
 
             # Check if we got exposed
             if inf_p > 0:
+                # print(inf_p)
                 p = random.random()
                 if p < inf_p:
                     current_state = self.exposed_state
                     dwell_time = NULL_DWELL_TIME
                     next_state = NULL_STATE
 
+        # If we are not already in transition
+        if dwell_time == NULL_DWELL_TIME:
             # Check if there is a transition defined for the current state
             if current_state in self.progression:
                 next_state = self.progression[current_state][group].sample()
                 dwell_time = self.dwell_time[current_state][group][next_state].sample()
 
         # If we are in transition
-        if dwell_time >= 0:
+        if dwell_time != NULL_DWELL_TIME:
             if dwell_time > 0:
-                dwell_time = min(dwell_time - tick_time, 0)
+                dwell_time = dwell_time - tick_time
+                if dwell_time < 0:
+                    dwell_time = 0
             else:
                 current_state = next_state
                 dwell_time = NULL_DWELL_TIME
@@ -325,4 +345,6 @@ class DiseaseModel:
         seed = random.randint(SEED_MIN, SEED_MAX)
 
         new_state = (pid, group, current_state, next_state, dwell_time, seed)
+        # if current_state != 0:
+        #     print(new_state)
         return new_state
