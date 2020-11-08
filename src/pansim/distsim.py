@@ -52,18 +52,14 @@ def df_scatter(df, scatter_col, col_rank, all_ranks, schema, dest_actor, dest_me
     """Scatter the dataframe to all ranks."""
     df["dest_rank"] = df[scatter_col].map(col_rank)
 
-    sent_ranks = set()
+    rank_batch = {rank: None for rank in all_ranks}
     for rank, group in df.groupby("dest_rank"):
         batch = serialize_df(group, schema)
+        rank_batch[rank] = batch
 
+    for rank, batch in rank_batch.items():
         msg = asys.Message(dest_method, args=[batch])
         asys.send(rank, dest_actor, msg)
-        sent_ranks.add(rank)
-
-    for rank in all_ranks:
-        if rank not in sent_ranks:
-            msg = asys.Message(dest_method, args=[None])
-            asys.send(rank, dest_actor, msg)
 
 
 class LocationActor:
@@ -71,12 +67,17 @@ class LocationActor:
 
     def __init__(self):
         """Initialize."""
+        self.behav_ranks = get_config().behav_ranks
+
         self.visit_batches = []
 
     def visit(self, visit_batch):
         """Get new visits."""
+        LOG.debug("LocationActor: received visit batch")
+
         self.visit_batches.append(visit_batch)
-        if len(self.visit_batches) < len(asys.ranks()):
+
+        if len(self.visit_batches) < len(self.behav_ranks):
             return
 
         self.compute_visit_output()
@@ -103,6 +104,7 @@ class LocationActor:
         visit_outputs = {k: np.hstack(vs) for k, vs in visit_outputs.items()}
         visit_output_df = pd.DataFrame(visit_outputs)
 
+        LOG.debug("LocationActor: Sending visit output to ProgressionActor")
         df_scatter(
             visit_output_df,
             "pid",
@@ -121,29 +123,29 @@ class ProgressionActor:
 
     def __init__(self):
         """Initialize."""
-        self.current_state_batch = None
+        self.behav_ranks = get_config().behav_ranks
+
+        self.current_state_batches = []
         self.visit_output_batches = []
 
     def current_state(self, current_state_batch):
         """Get the current state."""
-        self.current_state_batch = current_state_batch
+        LOG.debug("ProgressionActor: Received current_state")
 
-        if (
-            len(self.visit_output_batches) < len(asys.ranks())
-            or self.current_state_batch is None
-        ):
-            return
-
-        self.compute_progression_output()
+        self.current_state_batches.append(current_state_batch)
+        self.try_compute_prgression_output()
 
     def visit_output(self, visit_output_batch):
         """Get the visit outputs."""
+        LOG.debug("ProgressionActor: Received visit_output")
         self.visit_output_batches.append(visit_output_batch)
+        self.try_compute_prgression_output()
 
-        if (
-            len(self.visit_output_batches) < len(asys.ranks())
-            or self.current_state_batch is None
-        ):
+    def try_compute_prgression_output(self):
+        """Try to run compute_progression_output."""
+        if len(self.current_state_batches) < len(self.behav_ranks):
+            return
+        if len(self.visit_output_batches) < len(asys.ranks()):
             return
 
         self.compute_progression_output()
@@ -158,7 +160,13 @@ class ProgressionActor:
         state_schema = config.state_schema
         tick_time = config.tick_time
 
-        current_state_df = unserialize_df(self.current_state_batch)
+        current_state_df = [
+            unserialize_df(batch)
+            for batch in self.current_state_batches
+            if batch is not None
+        ]
+        current_state_df = pd.concat(current_state_df, axis=0)
+
         visit_output_df = [
             unserialize_df(batch)
             for batch in self.visit_output_batches
@@ -178,6 +186,7 @@ class ProgressionActor:
             new_states.append(new_state)
         new_state_df = pd.DataFrame(new_states, columns=columns)
 
+        LOG.debug("ProgressionActor: Send out new_state to BehaviorActor")
         df_scatter(
             new_state_df,
             "pid",
@@ -188,6 +197,7 @@ class ProgressionActor:
             "new_state",
         )
 
+        LOG.debug("ProgressionActor: Send out visit_output to BehaviorActor")
         df_scatter(
             visit_output_df,
             "pid",
@@ -198,7 +208,7 @@ class ProgressionActor:
             "visit_output",
         )
 
-        self.current_state_batch = None
+        self.current_state_batches = []
         self.visit_output_batches = []
 
 
@@ -219,23 +229,25 @@ class BehaviorActor:
 
     def visit_output(self, visit_output_batch):
         """Get the visit outputs."""
+        LOG.debug("BehaviorActor: Received visit_output")
         self.visit_output_batches.append(visit_output_batch)
-
-        if len(self.visit_output_batches) < len(asys.ranks()):
-            return
-        if len(self.new_state_batches) < len(asys.ranks()):
-            return
-
-        self.run_behavior_model()
+        self.try_run_behavior_model()
 
     def new_state(self, new_state_batch):
         """Get the new state."""
+        LOG.debug("BehaviorActor: Received new_state")
         self.new_state_batches.append(new_state_batch)
+        self.try_run_behavior_model()
 
+    def try_run_behavior_model(self):
+        """Try running the behavior model."""
         if len(self.visit_output_batches) < len(asys.ranks()):
             return
         if len(self.new_state_batches) < len(asys.ranks()):
             return
+
+        LOG.info("BehaviorActor: Running behavior model")
+        self.run_behavior_model()
 
     def run_behavior_model(self):
         """Run the behavior model for relevant agents."""
@@ -258,9 +270,9 @@ class BehaviorActor:
 
         self.behavior_model.run_behavior_model(new_state_df, visit_output_df)
 
+        LOG.debug("BehaviorActor: Sening epicurve row to main")
         state_count = new_state_df.groupby("current_state").agg({"pid": len}).pid
         epirow = [state_count.get(i, 0) for i in range(disease_model.n_states)]
-
         asys.ActorProxy(asys.MASTER_RANK, MAIN_AID).end_tick(epirow)
 
         self.visit_output_batches = []
@@ -277,6 +289,7 @@ class BehaviorActor:
         current_state_df = self.behavior_model.next_state_df
         visit_df = self.behavior_model.next_visit_df
 
+        LOG.debug("BehaviorActor: Sending out visit batches to LocationActor")
         df_scatter(
             visit_df,
             "lid",
@@ -287,6 +300,7 @@ class BehaviorActor:
             "visit",
         )
 
+        LOG.debug("BehaviorActor: Sending out current state batches to ProgressionActor")
         df_scatter(
             current_state_df,
             "pid",
@@ -297,7 +311,9 @@ class BehaviorActor:
             "current_state",
         )
 
+
 def node_rank(node, cpu):
+    """Get the rank of a cpu given node and cpu index."""
     n = asys.nodes()[node]
     r = asys.node_ranks(n)[cpu]
     return r
@@ -310,8 +326,10 @@ class ConfigActor:
         """Initialize."""
         self.seed = int(os.environ["SEED"])
         self.tick_time = int(os.environ["TICK_TIME"])
-        self.disease_model = DiseaseModel(os.environ["DISEASE_MODEL_FILE"])
         self.attr_names = os.environ["VISUAL_ATTRIBUTES"].strip().split(",")
+
+        self.disease_model = DiseaseModel(os.environ["DISEASE_MODEL_FILE"])
+
         self.visit_schema = make_visit_schema(self.attr_names)
         self.visit_output_schema = make_visit_output_schema(self.attr_names)
         self.state_schema = make_state_schema()
@@ -322,26 +340,22 @@ class ConfigActor:
         lid_part_df = pd.read_csv(lid_part_file)
         pid_part_df = pd.read_csv(pid_part_file)
 
-        self.lid_rank = {
-            lid: node_rank(node, cpu)
-            for lid, node, cpu in lid_part_df.itertuples(index=False, name=None)
-        }
-        self.pid_prog_rank = {
-            pid: node_rank(node, cpu)
-            for pid, node, cpu in pid_part_df.itertuples(index=False, name=None)
-        }
+        self.lid_rank = {}
+        for lid, node, cpu in lid_part_df.itertuples(index=False, name=None):
+            self.lid_rank[lid] = node_rank(node, cpu)
+
+        self.pid_prog_rank = {}
+        self.pid_behav_rank = {}
+        for pid, node, cpu in pid_part_df.itertuples(index=False, name=None):
+            self.pid_prog_rank[pid] = node_rank(node, cpu)
+            if per_node_behavior:
+                self.pid_behav_rank[pid] = node_rank(node, 0)
+            else:
+                self.pid_behav_rank[pid] = node_rank(node, cpu)
 
         if per_node_behavior:
-            self.pid_behav_rank = {
-                pid: node_rank(node, cpu)
-                for pid, node, cpu in pid_part_df.itertuples(index=False, name=None)
-            }
             self.behav_ranks = [asys.node_ranks(node)[0] for node in asys.nodes()]
         else:
-            self.pid_behav_rank = {
-                pid: node_rank(node, cpu)
-                for pid, node, cpu in pid_part_df.itertuples(index=False, name=None)
-            }
             self.behav_ranks = asys.ranks()
 
 
@@ -376,14 +390,17 @@ class MainActor:
         for rank in self.behav_ranks:
             asys.create_actor(rank, BEHAV_AID, BehaviorActor)
 
-        LOG.info("Starting tick %d", self.cur_tick)
+        LOG.info("MainActor: Starting tick %d", self.cur_tick)
         for rank in self.behav_ranks:
             asys.ActorProxy(rank, BEHAV_AID).start_tick()
 
     def end_tick(self, epicurve_part):
         """Receive the end tick message."""
+        LOG.debug("MainActor: Received end_tick")
+
         self.epicurve_parts.append(epicurve_part)
 
+        # Check if tick ended
         if len(self.epicurve_parts) < len(self.behav_ranks):
             return
 
@@ -392,23 +409,24 @@ class MainActor:
         self.cur_tick += 1
         self.epicurve_parts = []
 
-        LOG.info("Starting tick %d", self.cur_tick)
-
-        for rank in self.behav_ranks:
-            asys.ActorProxy(rank, BEHAV_AID).start_tick()
-
+        # Check if sim should still be running
         if self.cur_tick < self.num_ticks:
+            LOG.info("MainActor: Starting tick %d", self.cur_tick)
+            for rank in self.behav_ranks:
+                asys.ActorProxy(rank, BEHAV_AID).start_tick()
             return
 
-        columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
+        # Sim has now ended
+        LOG.info("Writing epicurve to output file.")
+        columns = get_config().disease_model.model_dict["states"]
         epi_df = pd.DataFrame(self.tick_epicurve, columns=columns)
         epi_df.to_csv(self.output_file, index=False)
 
         asys.stop()
+
 
 @cli.command()
 def distsim():
     """Run the simulation."""
     logging.basicConfig(level=logging.INFO)
     asys.start(MAIN_AID, MainActor)
-

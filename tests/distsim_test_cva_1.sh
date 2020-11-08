@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 export SEED=42
-export NUM_TICKS=2
+export NUM_TICKS=14
 export TICK_TIME=1
 export MAX_VISITS=204000
 export VISUAL_ATTRIBUTES=coughing,mask,sdist
@@ -27,4 +27,7 @@ export PID_PARTITION="$INPUT_DIR/pid_partition.csv"
 
 export OUTPUT_FILE="epicurve.csv"
 
-mpiexec -n 6 pansim distsim
+N_CPUS=6
+export XACTOR_MAX_SEND_BUFFERS=$((4 * $N_CPUS))
+export XACTOR_PROFILE_DIR=.
+mpiexec -n $N_CPUS pansim distsim
