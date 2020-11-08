@@ -25,18 +25,23 @@ def read_start_state_df(fname, seed):
 def setup_visit_df(visit_df, state_df, attr_names):
     """Return the visit dataframe."""
     visit_df = visit_df.copy()
-    visit_df["group"] = 0
-    visit_df["state"] = 0
     visit_df["behavior"] = 0
     for name in attr_names:
         visit_df[name] = 0
 
-    pid_i = {pid: i for i, pid in zip(state_df.index, state_df.pid)}
+    pid_i = {pid: i for i, pid in enumerate(state_df.pid)}
+    i_current_state = list(state_df.current_state)
+    i_group = list(state_df.group)
 
-    for index, pid in zip(visit_df.index, visit_df.pid):
-        state_index = pid_i[pid]
-        visit_df.at[index, "state"] = state_df.at[state_index, "current_state"]
-        visit_df.at[index, "group"] = state_df.at[state_index, "group"]
+    state_col = []
+    group_col = []
+    for pid in visit_df.pid:
+        i = pid_i[pid]
+        state_col.append(i_current_state[i])
+        group_col.append(i_group[i])
+
+    visit_df["state"] = state_col
+    visit_df["group"] = group_col
 
     return visit_df
 
