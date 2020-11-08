@@ -18,7 +18,7 @@ execute the following commands:
 
 .. code:: bash
 
-  $ conda create -n pansim python=3.8 numpy cython
+  $ conda create -n pansim python=3.8 numpy cython openmpi mpi4py
 
 
 The above command creates a new conda environment called ``pansim``

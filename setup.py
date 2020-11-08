@@ -62,6 +62,7 @@ setup(
         "tqdm",
         "py4j",
         "cython",
+        "xactor"
     ],
 
     url="http://github.com/nssac/pansim",
