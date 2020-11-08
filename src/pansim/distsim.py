@@ -246,7 +246,7 @@ class BehaviorActor:
         if len(self.new_state_batches) < len(asys.ranks()):
             return
 
-        LOG.info("BehaviorActor: Running behavior model")
+        LOG.debug("BehaviorActor: Running behavior model")
         self.run_behavior_model()
 
     def run_behavior_model(self):
