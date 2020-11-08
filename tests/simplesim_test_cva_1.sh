@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 
 export SEED=42
-export NUM_TICKS=2
+export NUM_TICKS=7
 export TICK_TIME=1
 export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
@@ -23,4 +23,5 @@ export VISIT_FILE_6="$INPUT_DIR/visit_6.csv"
 
 export OUTPUT_FILE="epicurve.csv"
 
-pansim simplesim
+TIMEFORMAT="Simulation runtime: %E"
+time pansim simplesim
