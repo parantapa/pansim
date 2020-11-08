@@ -9,6 +9,7 @@ import pandas as pd
 import pyarrow as pa
 
 from .simple_behavior import SimpleBehaviorModel
+from .simple_behavior_java import SimpleJavaBehaviorModel
 from .disease_model import DiseaseModel
 from .data_schema import make_visit_schema, make_visit_output_schema, make_state_schema
 from . import cli
@@ -221,11 +222,16 @@ class BehaviorActor:
 
         config = get_config()
         pid_behav_rank = config.pid_behav_rank
-        myrank = asys.current_rank()
-        pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
-        seed = config.seed + myrank
 
-        self.behavior_model = SimpleBehaviorModel(seed=seed, pids=pids)
+        if config.java_behavior:
+            LOG.info("BehaviorActor: Using Java behavior model")
+            self.behavior_model = SimpleJavaBehaviorModel()
+        else:
+            myrank = asys.current_rank()
+            pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
+            seed = config.seed + myrank
+
+            self.behavior_model = SimpleBehaviorModel(seed=seed, pids=pids)
 
     def visit_output(self, visit_output_batch):
         """Get the visit outputs."""
@@ -300,7 +306,9 @@ class BehaviorActor:
             "visit",
         )
 
-        LOG.debug("BehaviorActor: Sending out current state batches to ProgressionActor")
+        LOG.debug(
+            "BehaviorActor: Sending out current state batches to ProgressionActor"
+        )
         df_scatter(
             current_state_df,
             "pid",
@@ -322,8 +330,11 @@ def node_rank(node, cpu):
 class ConfigActor:
     """Configuration actor."""
 
-    def __init__(self, per_node_behavior=False):
+    def __init__(self, per_node_behavior, java_behavior):
         """Initialize."""
+        self.per_node_behavior = per_node_behavior
+        self.java_behavior = java_behavior
+
         self.seed = int(os.environ["SEED"])
         self.tick_time = int(os.environ["TICK_TIME"])
         self.attr_names = os.environ["VISUAL_ATTRIBUTES"].strip().split(",")
@@ -366,7 +377,10 @@ class MainActor:
         """Initialize."""
         self.num_ticks = int(os.environ["NUM_TICKS"])
         self.output_file = os.environ["OUTPUT_FILE"]
-        self.per_node_behavior = False
+        self.per_node_behavior = bool(int(os.environ.get("PER_NODE_BEHAVIOR", "0")))
+        self.java_behavior = bool(int(os.environ.get("JAVA_BEHAVIOR", "0")))
+        if self.java_behavior:
+            self.per_node_behavior = True
 
         self.epicurve_parts = []
         self.cur_tick = 0
@@ -382,7 +396,11 @@ class MainActor:
         """Run the simulation."""
         for rank in asys.ranks():
             asys.create_actor(
-                rank, CONFIG_AID, ConfigActor, per_node_behavior=self.per_node_behavior
+                rank,
+                CONFIG_AID,
+                ConfigActor,
+                per_node_behavior=self.per_node_behavior,
+                java_behavior=self.java_behavior,
             )
             asys.create_actor(rank, LOC_AID, LocationActor)
             asys.create_actor(rank, PROG_AID, ProgressionActor)
@@ -428,5 +446,5 @@ class MainActor:
 @cli.command()
 def distsim():
     """Run the simulation."""
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     asys.start(MAIN_AID, MainActor)

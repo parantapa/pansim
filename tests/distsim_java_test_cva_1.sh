@@ -11,24 +11,13 @@ export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
 export DISEASE_MODEL_FILE="disease_models/seiar.toml"
 
-INPUT_DIR="simple_sim_data/cva_1"
-
-export START_STATE_FILE="$INPUT_DIR/start_state_ifrac=0.010000,sfrac=0.600000.csv"
-export VISIT_FILE_0="$INPUT_DIR/visit_0.csv"
-export VISIT_FILE_1="$INPUT_DIR/visit_1.csv"
-export VISIT_FILE_2="$INPUT_DIR/visit_2.csv"
-export VISIT_FILE_3="$INPUT_DIR/visit_3.csv"
-export VISIT_FILE_4="$INPUT_DIR/visit_4.csv"
-export VISIT_FILE_5="$INPUT_DIR/visit_5.csv"
-export VISIT_FILE_6="$INPUT_DIR/visit_6.csv"
-
 export LID_PARTITION="$INPUT_DIR/lid_partition.csv"
 export PID_PARTITION="$INPUT_DIR/pid_partition.csv"
 
 export OUTPUT_FILE="epicurve.csv"
 
-export PER_NODE_BEHAVIOR=0
-export JAVA_BEHAVIOR=0
+export PER_NODE_BEHAVIOR=1
+export JAVA_BEHAVIOR=1
 
 
 N_CPUS=6

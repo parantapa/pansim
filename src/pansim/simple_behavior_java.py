@@ -2,6 +2,7 @@
 
 import os
 import time
+import logging
 
 import pyarrow as pa
 import py4j.java_gateway
@@ -14,14 +15,19 @@ def get_gateway():
     """Retry getting gateway until retries are exhausted."""
     max_tries = int(os.environ.get("GATEWAY_CONNECTION_RETRIES", 300))
 
+    logger = logging.getLogger("py4j")
+    logger.setLevel(logging.CRITICAL)
+
     print("Trying to connect to behavior gateway.")
     tries = 0
     while tries < max_tries:
         try:
             gateway = py4j.java_gateway.JavaGateway(eager_load=True)
             print("Successfully connected to behavior gateway.")
+
+            logger.setLevel(logging.WARNING)
             return gateway
-        except py4j.protocol.Py4JNetworkError:
+        except (py4j.protocol.Py4JNetworkError, OSError):
             time.sleep(1)
             tries += 1
     raise RuntimeError("Couldn't connect to behavior gateway.")

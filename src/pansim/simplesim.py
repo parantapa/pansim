@@ -18,7 +18,7 @@ def simplesim():
     num_ticks = int(os.environ["NUM_TICKS"])
     tick_time = int(os.environ["TICK_TIME"])
     output_file = os.environ["OUTPUT_FILE"]
-    java_behavior = bool(os.environ.get("JAVA_BEHAVIOR", "0"))
+    java_behavior = bool(int(os.environ.get("JAVA_BEHAVIOR", "0")))
 
     print("Loading disease model")
     disease_model = DiseaseModel(os.environ["DISEASE_MODEL_FILE"])
