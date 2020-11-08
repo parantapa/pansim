@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from .simple_behavior import SimpleBehaviorModel
+from .simple_behavior_java import SimpleJavaBehaviorModel
 from .disease_model import DiseaseModel
 from . import cli
 
@@ -17,12 +18,17 @@ def simplesim():
     num_ticks = int(os.environ["NUM_TICKS"])
     tick_time = int(os.environ["TICK_TIME"])
     output_file = os.environ["OUTPUT_FILE"]
+    java_behavior = bool(os.environ.get("JAVA_BEHAVIOR", "0"))
 
     print("Loading disease model")
     disease_model = DiseaseModel(os.environ["DISEASE_MODEL_FILE"])
 
     print("Initializing behavior model")
-    behavior_model = SimpleBehaviorModel()
+    if java_behavior:
+        print("Using Java behavior model")
+        behavior_model = SimpleJavaBehaviorModel()
+    else:
+        behavior_model = SimpleBehaviorModel()
 
     epicurve = []
 
