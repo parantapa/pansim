@@ -80,17 +80,11 @@ class SimpleJavaBehaviorModel:
 
         self.gateway.entry_point.runBehaviorModel(cur_state_df_raw, visit_output_df_raw)
 
-    def cleanup(self):
-        """Cleanup resources on the behavior server."""
-        self.gateway.entry_point.cleanup()
-
     def close(self):
         """Close the JVM Gateway."""
         if self.gateway is not None:
+            self.gateway.entry_point.cleanup()
+            self.gateway.shutdown()
             self.gateway.close()
+
             self.gateway = None
-
-    def shutdown(self):
-        """Shutdown the gateway server."""
-        self.gateway.shutdown()
-
