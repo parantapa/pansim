@@ -3,6 +3,13 @@
 
 set -Eeuo pipefail
 
+set +u
+eval "$(conda shell.bash hook)"
+conda activate pansim
+set -u
+
+set -x
+
 export SEED=42
 export NUM_TICKS=7
 export TICK_TIME=1
