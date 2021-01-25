@@ -446,5 +446,5 @@ class MainActor:
 @cli.command()
 def distsim():
     """Run the simulation."""
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     asys.start(MAIN_AID, MainActor)
