@@ -14,7 +14,7 @@ succ.base = 0.9
 
 [infectivity]
 
-expo.base=0.45
+expo.base = 0.45
 isymp.base = 0.9
 iasymp.base = 0.675
 
