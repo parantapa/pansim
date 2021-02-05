@@ -1,5 +1,5 @@
 #!/bin/bash
-# Simple sim test cva_1
+# Test distributed PanSim on Rivanna
 
 set -Eeuo pipefail
 
@@ -10,7 +10,7 @@ set -u
 
 set -x
 
-export SEED=42
+export SEED=$RANDOM
 export NUM_TICKS=7
 export TICK_TIME=1
 export MAX_VISITS=204000
@@ -18,7 +18,7 @@ export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
 INPUT_DIR="/scratch/pb5gj/2020-pansim-test-inputs/2021-01-25"
 COUNTY="charlottesville"
-export OUTPUT_FILE="epicurve.csv"
+export OUTPUT_FILE="/scratch/pb5gj/2020-pansim-test-inputs/epicurve_${COUNTY}.csv"
 
 export DISEASE_MODEL_FILE="$INPUT_DIR/seiar_1.toml"
 
