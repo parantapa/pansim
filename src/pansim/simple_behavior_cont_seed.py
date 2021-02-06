@@ -134,9 +134,9 @@ class SimpleBehaviorContSeedModel:
         self.next_visit_df = setup_visit_df(self.visit_dfs_raw[idx], cur_state_df, self.attr_names)
 
         if "TICK_EXPOSED_SEED" in os.environ:
-            _current_state = self.next_state_df["current_state"]
-            _next_state = self.next_state_df["next_state"]
-            _dwell_time = self.next_state_df["dwell_time"]
+            _current_state = self.next_state_df["current_state"].to_numpy()
+            _next_state = self.next_state_df["next_state"].to_numpy()
+            _dwell_time = self.next_state_df["dwell_time"].to_numpy()
 
             k = int(os.environ["TICK_EXPOSED_SEED"])
             pop = [i for i, s in enumerate(_current_state) if s == self.succ_state]
