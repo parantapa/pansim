@@ -10,6 +10,7 @@ import pyarrow as pa
 
 from .simple_behavior import SimpleBehaviorModel
 from .simple_behavior_java import SimpleJavaBehaviorModel
+from .simple_behavior_cont_seed import SimpleBehaviorContSeedModel
 from .disease_model import DiseaseModel
 from .data_schema import make_visit_schema, make_visit_output_schema, make_state_schema
 from . import cli
@@ -223,9 +224,12 @@ class BehaviorActor:
         config = get_config()
         pid_behav_rank = config.pid_behav_rank
 
-        if config.java_behavior:
+        if config.java_behavior == 1:
             LOG.info("BehaviorActor: Using Java behavior model")
             self.behavior_model = SimpleJavaBehaviorModel()
+        elif config.java_behavior == 2:
+            LOG.info("BehaviorActor: Using SimpleBehaviorContSeedModel behavior model")
+            self.behavior_model = SimpleBehaviorContSeedModel()
         else:
             myrank = asys.current_rank()
             pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
@@ -378,7 +382,7 @@ class MainActor:
         self.num_ticks = int(os.environ["NUM_TICKS"])
         self.output_file = os.environ["OUTPUT_FILE"]
         self.per_node_behavior = bool(int(os.environ.get("PER_NODE_BEHAVIOR", "0")))
-        self.java_behavior = bool(int(os.environ.get("JAVA_BEHAVIOR", "0")))
+        self.java_behavior = int(os.environ.get("JAVA_BEHAVIOR", "0"))
         if self.java_behavior:
             self.per_node_behavior = True
 
