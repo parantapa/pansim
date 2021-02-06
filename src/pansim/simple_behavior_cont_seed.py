@@ -123,6 +123,10 @@ class SimpleBehaviorContSeedModel:
             for idx in idxs:
                 _current_state[idx] = self.expo_state
 
+            self.next_state_df["current_state"] = _current_state
+            self.next_state_df["next_state"] = _next_state
+            self.next_state_df["dwell_time"] = _dwell_time
+
     def run_behavior_model(self, cur_state_df, visit_output_df):
         """Run the behavior model."""
         _ = visit_output_df
