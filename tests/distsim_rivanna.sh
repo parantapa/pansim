@@ -32,8 +32,11 @@ export VISIT_FILE_4="$INPUT_DIR/visits_${COUNTY}_4.csv"
 export VISIT_FILE_5="$INPUT_DIR/visits_${COUNTY}_5.csv"
 export VISIT_FILE_6="$INPUT_DIR/visits_${COUNTY}_6.csv"
 
-export PER_NODE_BEHAVIOR=0
-export JAVA_BEHAVIOR=0
+export PER_NODE_BEHAVIOR=1
+export JAVA_BEHAVIOR=2
+
+export START_EXPOSED_SEED=300
+export TICK_EXPOSED_SEED=10
 
 PANSIM_CPUS=20
 
