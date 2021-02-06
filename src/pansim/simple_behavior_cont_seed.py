@@ -103,9 +103,9 @@ class SimpleBehaviorContSeedModel:
 
         if "START_EXPOSED_SEED" in os.environ:
             # Make everyone suscceptible
-            _current_state = self.next_state_df["current_state"]
-            _next_state = self.next_state_df["next_state"]
-            _dwell_time = self.next_state_df["dwell_time"]
+            _current_state = self.next_state_df["current_state"].to_numpy()
+            _next_state = self.next_state_df["next_state"].to_numpy()
+            _dwell_time = self.next_state_df["dwell_time"].to_numpy()
             _current_state[:] = self.succ_state
             _next_state[:] = NULL_STATE
             _dwell_time[:] = NULL_DWELL_TIME
