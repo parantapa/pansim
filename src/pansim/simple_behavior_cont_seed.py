@@ -8,6 +8,9 @@ import pyarrow.csv as csv
 
 from .disease_model import SEED_MIN, SEED_MAX, NULL_STATE, NULL_DWELL_TIME
 
+import xactor as asys
+LOG = asys.getLogger(__name__)
+
 
 def read_start_state_df(fname, seed):
     """Return the start state dataframe."""
@@ -90,7 +93,7 @@ class SimpleBehaviorContSeedModel:
 
         self.next_tick = 0
 
-        self.next_state_df = self.start_state_df.copy()
+        self.next_state_df = self.start_state_df
         idx = self.next_tick % len(self.visit_dfs_raw)
         self.next_visit_df = setup_visit_df(self.visit_dfs_raw[idx], self.start_state_df, self.attr_names)
 
@@ -112,6 +115,7 @@ class SimpleBehaviorContSeedModel:
             popsize = len(self.next_state_df)
             if k > popsize:
                 k = popsize
+            LOG.info("Setting %d users to exposed", k)
             pop = range(popsize)
             idxs = random.sample(pop, k)
 
@@ -125,7 +129,7 @@ class SimpleBehaviorContSeedModel:
 
         self.next_tick += 1
 
-        self.next_state_df = cur_state_df.copy()
+        self.next_state_df = cur_state_df
         idx = self.next_tick % len(self.visit_dfs_raw)
         self.next_visit_df = setup_visit_df(self.visit_dfs_raw[idx], cur_state_df, self.attr_names)
 
@@ -136,8 +140,10 @@ class SimpleBehaviorContSeedModel:
 
             k = int(os.environ["TICK_EXPOSED_SEED"])
             pop = [i for i, s in enumerate(_current_state) if s == self.succ_state]
+            LOG.info("%d users are suscceptible", len(pop))
             if k > len(pop):
                 k = len(pop)
+            LOG.info("Setting %d users to exposed", k)
             idxs = random.sample(pop, k)
 
             for idx in idxs:
