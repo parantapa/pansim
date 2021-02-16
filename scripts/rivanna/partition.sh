@@ -1,5 +1,7 @@
 #!/bin/bash
+# Partition the pids and lids
 
+set -Eeuo pipefail
 set -x
 
 for county in charlottesville richmond ; do
