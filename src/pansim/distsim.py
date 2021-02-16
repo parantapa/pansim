@@ -95,7 +95,10 @@ class LocationActor:
         visit_df = [
             unserialize_df(batch) for batch in self.visit_batches if batch is not None
         ]
-        visit_df = pd.concat(visit_df, axis=0)
+        if visit_df:
+            visit_df = pd.concat(visit_df, axis=0)
+        else:
+            visit_df = get_config().empty_visit_df
 
         visit_outputs = defaultdict(list)
         for lid, group in visit_df.groupby("lid"):
@@ -167,14 +170,20 @@ class ProgressionActor:
             for batch in self.current_state_batches
             if batch is not None
         ]
-        current_state_df = pd.concat(current_state_df, axis=0)
+        if current_state_df:
+            current_state_df = pd.concat(current_state_df, axis=0)
+        else:
+            current_state_df = get_config().empty_state_df
 
         visit_output_df = [
             unserialize_df(batch)
             for batch in self.visit_output_batches
             if batch is not None
         ]
-        visit_output_df = pd.concat(visit_output_df, axis=0)
+        if visit_output_df:
+            visit_output_df = pd.concat(visit_output_df, axis=0)
+        else:
+            visit_output_df = get_config().empty_visit_output_df
 
         current_state_df = current_state_df.set_index("pid", drop=False)
         columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
@@ -269,14 +278,20 @@ class BehaviorActor:
             for batch in self.visit_output_batches
             if batch is not None
         ]
-        visit_output_df = pd.concat(visit_output_df, axis=0)
+        if visit_output_df:
+            visit_output_df = pd.concat(visit_output_df, axis=0)
+        else:
+            visit_output_df = get_config().empty_visit_output_df
 
         new_state_df = [
             unserialize_df(batch)
             for batch in self.new_state_batches
             if batch is not None
         ]
-        new_state_df = pd.concat(new_state_df, axis=0)
+        if new_state_df:
+            new_state_df = pd.concat(new_state_df, axis=0)
+        else:
+            new_state_df = get_config().empty_state_df
 
         self.behavior_model.run_behavior_model(new_state_df, visit_output_df)
 
@@ -348,6 +363,10 @@ class ConfigActor:
         self.visit_schema = make_visit_schema(self.attr_names)
         self.visit_output_schema = make_visit_output_schema(self.attr_names)
         self.state_schema = make_state_schema()
+
+        self.empty_visit_df = self.visit_schema.empty_table().to_pandas()
+        self.empty_visit_output_df = self.visit_output_schema.empty_table().to_pandas()
+        self.empty_state_df = self.state_schema.empty_table().to_pandas()
 
         lid_part_file = os.environ["LID_PARTITION"]
         pid_part_file = os.environ["PID_PARTITION"]
