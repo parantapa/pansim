@@ -10,6 +10,10 @@ set -u
 
 set -x
 
+NODES=$SLURM_NNODES
+CPUS=$SLURM_NTASKS_PER_NODE
+JOBID=$SLURM_JOB_ID
+
 export SEED=$RANDOM
 export NUM_TICKS=28
 export TICK_TIME=1
@@ -34,9 +38,6 @@ export VISIT_FILE_6="$INPUT_DIR/visits_${COUNTY}_6.csv"
 
 export PER_NODE_BEHAVIOR=0
 export JAVA_BEHAVIOR=0
-
-NODES=1
-CPUS=20
 
 export XACTOR_MAX_SEND_BUFFERS=$((4 * $NODES * $CPUS))
 export LID_PARTITION="$INPUT_DIR/lid__county=${COUNTY}__n=${NODES}__c=${CPUS}.csv"
