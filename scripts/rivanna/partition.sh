@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 set -x
 
-for county in charlottesville richmond ; do
+for county in charlottesville richmond albemarle fluvanna goochland hanover henrico louisa; do
     nodes=1
     for cpus in 5 10 20 40 ; do
         pansim partition \
