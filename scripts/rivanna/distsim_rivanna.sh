@@ -10,9 +10,11 @@ set -u
 
 set -x
 
-NODES=$SLURM_NNODES
-CPUS=$SLURM_NTASKS_PER_NODE
-JOBID=$SLURM_JOB_ID
+NODES="$SLURM_NNODES"
+CPUS="$SLURM_NTASKS_PER_NODE"
+JOBID="$SLURM_JOB_ID"
+
+echo "Running for county $COUNTY"
 
 export SEED=$RANDOM
 export NUM_TICKS=28
@@ -21,7 +23,6 @@ export MAX_VISITS=500000
 export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
 INPUT_DIR="/scratch/pb5gj/2020-pansim-test-inputs/2021-01-25"
-COUNTY="charlottesville"
 export OUTPUT_FILE="/scratch/pb5gj/2020-pansim-test-inputs/epicurve_${COUNTY}_${JOBID}.csv"
 
 export DISEASE_MODEL_FILE="$INPUT_DIR/seiar_1.toml"
