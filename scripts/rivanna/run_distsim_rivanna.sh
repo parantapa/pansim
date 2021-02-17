@@ -15,7 +15,7 @@ do_job () {
     "$simscript"
 }
 
-submit_job () {
+submit_single_node_job () {
     set -x
 
     for county in charlottesville richmond ; do
@@ -40,8 +40,34 @@ submit_job () {
     done
 }
 
+submit_multi_node_job () {
+    set -x
+
+    for county in charlottesville richmond ; do
+        cpus=40
+        for nodes in 1 2 4 ; do
+            for replicate in $(seq 5) ; do
+                key="count=${county}__n=${nodes}__c=${cpus}__replicate=${replicate}"
+
+                sbatch \
+                    --job-name distsim \
+                    --nodes $nodes \
+                    --ntasks-per-node $cpus \
+                    --cpus-per-task 1 \
+                    --mem-per-cpu 9G \
+                    --partition bii \
+                    --account distributed-2apl  \
+                    --time 2:00:00 \
+                    --output "$OUPUTDIR/distsim__${key}.%j.out" \
+                    "$SCRIPT" "$SIMSCRIPT" "$county"
+            done
+        done
+    done
+}
+
 if [[ "$#" -eq 0 ]] ; then
-    submit_job
+    # submit_single_node_job
+    submit_multi_node_job
 else
     do_job "$@"
 fi
