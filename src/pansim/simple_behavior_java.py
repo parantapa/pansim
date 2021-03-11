@@ -15,7 +15,7 @@ from .data_schema import make_visit_output_schema, make_state_schema
 
 def start_java_behavior():
     """Start the java behavior script."""
-    java_behavior_script = os.environ("JAVA_BEHAVIOR_SCRIPT", None)
+    java_behavior_script = os.environ.get("JAVA_BEHAVIOR_SCRIPT", None)
     if java_behavior_script is None:
         print("JAVA_BEHAVIOR_SCRIPT not specified.")
         sys.exit(1)
