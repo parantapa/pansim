@@ -20,16 +20,9 @@ def start_java_behavior():
         print("JAVA_BEHAVIOR_SCRIPT not specified.")
         sys.exit(1)
 
-    java_behavior_output = os.environ("JAVA_BEHAVIOR_OUTPUT", None)
-    if java_behavior_output is None:
-        print("JAVA_BEHAVIOR_OUTPUT not specified.")
-        sys.exit(1)
-
-    stdout = open(java_behavior_output, "wb")
     cmd = [java_behavior_script]
-    proc = Popen(cmd, stdin=DEVNULL, stdout=stdout.fileno(),
-                 stderr=stdout.fileno())
-    return (proc, stdout)
+    proc = Popen(cmd, stdin=DEVNULL)
+    return proc
 
 
 def get_gateway():
@@ -64,7 +57,7 @@ class SimpleJavaBehaviorModel:
         self.visit_output_schema = make_visit_output_schema(self.attr_names)
         self.state_schema = make_state_schema()
 
-        self.behavior_proc, self.behavior_output = start_java_behavior()
+        self.behavior_proc = start_java_behavior()
         self.gateway = get_gateway()
 
     def __del__(self):
@@ -124,7 +117,3 @@ class SimpleJavaBehaviorModel:
             if self.behavior_proc.poll() is None:
                 self.behavior_proc.terminate()
             self.behavior_proc = None
-
-        if self.behavior_output is not None:
-            self.behavior_output.close()
-            self.behavior_output = None
