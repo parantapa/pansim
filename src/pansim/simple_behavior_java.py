@@ -1,14 +1,35 @@
 """Simple behavior model."""
 
 import os
+import sys
 import time
 import logging
+from subprocess import Popen, DEVNULL
 
 import pyarrow as pa
 import py4j.java_gateway
 import py4j.protocol
 
 from .data_schema import make_visit_output_schema, make_state_schema
+
+
+def start_java_behavior():
+    """Start the java behavior script."""
+    java_behavior_script = os.environ("JAVA_BEHAVIOR_SCRIPT", None)
+    if java_behavior_script is None:
+        print("JAVA_BEHAVIOR_SCRIPT not specified.")
+        sys.exit(1)
+
+    java_behavior_output = os.environ("JAVA_BEHAVIOR_OUTPUT", None)
+    if java_behavior_output is None:
+        print("JAVA_BEHAVIOR_OUTPUT not specified.")
+        sys.exit(1)
+
+    stdout = open(java_behavior_output, "wb")
+    cmd = [java_behavior_script]
+    proc = Popen(cmd, stdin=DEVNULL, stdout=stdout.fileno(),
+                 stderr=stdout.fileno())
+    return (proc, stdout)
 
 
 def get_gateway():
@@ -43,6 +64,7 @@ class SimpleJavaBehaviorModel:
         self.visit_output_schema = make_visit_output_schema(self.attr_names)
         self.state_schema = make_state_schema()
 
+        self.behavior_proc, self.behavior_output = start_java_behavior()
         self.gateway = get_gateway()
 
     def __del__(self):
@@ -67,8 +89,10 @@ class SimpleJavaBehaviorModel:
 
     def run_behavior_model(self, cur_state_df, visit_output_df):
         """Run the behavior model."""
-        print("Sending current state dataframe with %d rows" % len(cur_state_df))
-        print("Sending visit output dataframe with %d rows" % len(visit_output_df))
+        print("Sending current state dataframe with %d rows" %
+              len(cur_state_df))
+        print("Sending visit output dataframe with %d rows" %
+              len(visit_output_df))
 
         sink = pa.BufferOutputStream()
         writer = pa.ipc.new_file(sink, self.state_schema)
@@ -79,12 +103,14 @@ class SimpleJavaBehaviorModel:
 
         sink = pa.BufferOutputStream()
         writer = pa.ipc.new_file(sink, self.visit_output_schema)
-        batch = pa.record_batch(visit_output_df, schema=self.visit_output_schema)
+        batch = pa.record_batch(
+            visit_output_df, schema=self.visit_output_schema)
         writer.write_batch(batch)
         writer.close()
         visit_output_df_raw = sink.getvalue().to_pybytes()
 
-        self.gateway.entry_point.runBehaviorModel(cur_state_df_raw, visit_output_df_raw)
+        self.gateway.entry_point.runBehaviorModel(
+            cur_state_df_raw, visit_output_df_raw)
 
     def close(self):
         """Close the JVM Gateway."""
@@ -92,5 +118,13 @@ class SimpleJavaBehaviorModel:
             self.gateway.entry_point.cleanup()
             self.gateway.shutdown()
             self.gateway.close()
-
             self.gateway = None
+
+        if self.behavior_proc is not None:
+            if self.behavior_proc.poll() is None:
+                self.behavior_proc.terminate()
+            self.behavior_proc = None
+
+        if self.behavior_output is not None:
+            self.behavior_output.close()
+            self.behavior_output = None
