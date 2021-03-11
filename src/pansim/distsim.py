@@ -351,6 +351,13 @@ class ConfigActor:
 
     def __init__(self, per_node_behavior, java_behavior):
         """Initialize."""
+        nodes = list(asys.nodes())
+        current_rank = asys.current_rank()
+        current_node = [node for node in nodes if current_rank in asys.node_ranks(node)]
+        current_node = current_node[0]
+        current_node_index = nodes.index(current_node)
+        os.environ["CURRENT_NODE"] = str(current_node_index)
+
         self.per_node_behavior = per_node_behavior
         self.java_behavior = java_behavior
 
@@ -469,12 +476,5 @@ class MainActor:
 @cli.command()
 def distsim():
     """Run the simulation."""
-    nodes = list(asys.nodes())
-    current_rank = asys.current_rank()
-    current_node = [node for node in nodes if current_rank in asys.node_ranks(node)]
-    current_node = current_node[0]
-    current_node_index = nodes.index(current_node)
-    os.environ["CURRENT_NODE"] = str(current_node_index)
-
     logging.basicConfig(level=logging.INFO)
     asys.start(MAIN_AID, MainActor)
