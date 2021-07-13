@@ -1,0 +1,9 @@
+name: pansim
+channels:
+  - conda-forge
+  - default
+dependencies:
+  - python=3.8
+  - openmpi
+  - mpi4py
+  - pip

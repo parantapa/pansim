@@ -6,8 +6,17 @@ PanSim is a distributed pandemic simulator.
 Test Instructions
 -----------------
 
-Setup a Anaconda environment
-............................
+Clone Pansim
+............
+
+.. code:: bash
+
+  $ cd ~
+  $ git clone https://github.com/parantapa/pansim.git
+  $ cd pansim
+
+Create a Anaconda environment
+.............................
 
 To create a new virtual environment with conda,
 have Anaconda/Miniconda setup on your system.
@@ -18,23 +27,18 @@ execute the following commands:
 
 .. code:: bash
 
-  $ conda create -n pansim python=3.8 numpy cython openmpi mpi4py
+  $ cd ~/pansim
+  $ conda env create -f environment.yml
 
+The above command creates a new conda environment called ``pansim``.
 
-The above command creates a new conda environment called ``pansim``
-with python=3.8, numpy and cython installed.
-
-Install Pansim
-..............
+Install PanSim in the environment
+.................................
 
 .. code:: bash
 
-  $ cd ~
-  $ git clone https://github.com/parantapa/pansim.git
-  $ cd pansim
   $ conda activate pansim
-  $ pip install -e .
-
+  $ pip install -U -e .
 
 Test Pansim
 ...........
