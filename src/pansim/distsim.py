@@ -4,16 +4,15 @@ import os
 import logging
 from collections import defaultdict
 
+import click
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 
 from .simple_behavior import SimpleBehaviorModel
 from .simple_behavior_java import SimpleJavaBehaviorModel
-from .simple_behavior_cont_seed import SimpleBehaviorContSeedModel
 from .disease_model import DiseaseModel
 from .data_schema import make_visit_schema, make_visit_output_schema, make_state_schema
-from . import cli
 
 import xactor as asys
 
@@ -237,9 +236,6 @@ class BehaviorActor:
         if config.java_behavior == 1:
             LOG.info("BehaviorActor: Using Java behavior model")
             self.behavior_model = SimpleJavaBehaviorModel()
-        elif config.java_behavior == 2:
-            LOG.info("BehaviorActor: Using SimpleBehaviorContSeedModel behavior model")
-            self.behavior_model = SimpleBehaviorContSeedModel()
         else:
             myrank = asys.current_rank()
             pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
@@ -474,7 +470,7 @@ class MainActor:
         asys.stop()
 
 
-@cli.command()
+@click.command()
 def distsim():
     """Run the simulation."""
     logging.basicConfig(level=logging.INFO)

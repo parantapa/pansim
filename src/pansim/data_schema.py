@@ -15,7 +15,7 @@ def make_visit_schema(visual_attributes):
         ("end_time", pa.int32()),
     ]
 
-    columns = set(k for k, v in schema)
+    columns = set(k for k, _ in schema)
     for attr in visual_attributes:
         if attr in columns:
             raise ValueError(f"Can't make visit schema: {attr} is already a column")
@@ -36,7 +36,7 @@ def make_visit_output_schema(visual_attributes):
         ("n_contacts", pa.int32()),
     ]
 
-    columns = set(k for k, v in schema)
+    columns = set(k for k, _ in schema)
     for attr in visual_attributes:
         if attr in columns:
             raise ValueError(

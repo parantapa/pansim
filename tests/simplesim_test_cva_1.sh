@@ -10,7 +10,7 @@ export VISUAL_ATTRIBUTES=coughing,mask,sdist
 
 export DISEASE_MODEL_FILE="disease_models/seiar.toml"
 
-INPUT_DIR="simple_sim_data/cva_1"
+INPUT_DIR="test_data/cva_1"
 
 export START_STATE_FILE="$INPUT_DIR/start_state_ifrac=0.010000,sfrac=0.600000.csv"
 export VISIT_FILE_0="$INPUT_DIR/visit_0.csv"

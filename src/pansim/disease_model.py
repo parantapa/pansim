@@ -6,15 +6,16 @@ import toml
 import numpy as np
 
 from .sampler import FixedSampler, CategoricalSampler
+
 # from .visit_computation_py import (
 #         compute_visit_output_py as compute_visit_output,
 #         START_EVENT,
 #         END_EVENT
 # )
 from .visit_computation_cy import (
-        compute_visit_output_cy as compute_visit_output,
-        START_EVENT,
-        END_EVENT
+    compute_visit_output_cy as compute_visit_output,
+    START_EVENT,
+    END_EVENT,
 )
 
 # from line_profiler import LineProfiler
@@ -25,6 +26,7 @@ SEED_MIN = np.iinfo(np.int64).min
 SEED_MAX = np.iinfo(np.int64).max
 NULL_STATE = -1
 NULL_DWELL_TIME = -1
+
 
 def psum(ps, axis=-1):
     """Add the probabilites."""
@@ -161,7 +163,6 @@ class DiseaseModel:
                                 # if prob > 0:
                                 #     print(sname_s, gname_s, bname_s, sname_i, gname_i, bname_i, prob)
 
-
         return transmission_prob
 
     def _compute_progression(self):
@@ -224,7 +225,7 @@ class DiseaseModel:
         # print(dwell_time)
         return dwell_time
 
-    #@profile
+    # @profile
     def compute_visit_output(self, visits, visual_attributes, lid):
         """Compute the visit results."""
         # pd.set_option("display.max_rows", None, "display.max_columns", None)
@@ -239,25 +240,30 @@ class DiseaseModel:
         infectivity = self.infectivity
         unit_time = self.unit_time
 
-        e_event_visit = np.hstack([
-            np.arange(n_visits, dtype=np.int64),
-            np.arange(n_visits, dtype=np.int64)
-        ])
-        e_event_time = np.hstack([
-            visits.start_time.to_numpy(dtype=np.int32),
-            visits.end_time.to_numpy(dtype=np.int32)
-        ])
-        e_event_type = np.hstack([
-            np.full(n_visits, START_EVENT, dtype=np.int8),
-            np.full(n_visits, END_EVENT, dtype=np.int8),
-        ])
+        e_event_visit = np.hstack(
+            [np.arange(n_visits, dtype=np.int64), np.arange(n_visits, dtype=np.int64)]
+        )
+        e_event_time = np.hstack(
+            [
+                visits.start_time.to_numpy(dtype=np.int32),
+                visits.end_time.to_numpy(dtype=np.int32),
+            ]
+        )
+        e_event_type = np.hstack(
+            [
+                np.full(n_visits, START_EVENT, dtype=np.int8),
+                np.full(n_visits, END_EVENT, dtype=np.int8),
+            ]
+        )
         e_indices_sorted = np.lexsort([e_event_type, e_event_time])
 
         v_state = visits.state.to_numpy(dtype=np.int8)
         v_group = visits.group.to_numpy(dtype=np.int8)
         v_behavior = visits.behavior.to_numpy(dtype=np.int8)
-        
-        v_attributes = [visits[attr].to_numpy(dtype=np.int8) for attr in visual_attributes]
+
+        v_attributes = [
+            visits[attr].to_numpy(dtype=np.int8) for attr in visual_attributes
+        ]
         v_attributes = np.vstack(v_attributes)
 
         vo_inf_prob = np.zeros(n_visits, dtype=np.float64)
@@ -279,7 +285,7 @@ class DiseaseModel:
             v_attributes,
             vo_inf_prob,
             vo_n_contacts,
-            vo_attributes
+            vo_attributes,
         )
 
         # if np.count_nonzero(vo_inf_prob) > 0:

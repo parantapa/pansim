@@ -7,8 +7,6 @@ from collections import defaultdict, Counter
 import click
 import pandas as pd
 
-from . import cli
-
 
 def do_partition(visit_df, n_nodes, n_cpu_per_node):
     """Parition locations and persons."""
@@ -77,7 +75,7 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
     return lid_part_df, pid_part_df
 
 
-@cli.command()
+@click.command()
 @click.option(
     "-l",
     "--location-partition",

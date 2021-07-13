@@ -82,10 +82,8 @@ class SimpleJavaBehaviorModel:
 
     def run_behavior_model(self, cur_state_df, visit_output_df):
         """Run the behavior model."""
-        print("Sending current state dataframe with %d rows" %
-              len(cur_state_df))
-        print("Sending visit output dataframe with %d rows" %
-              len(visit_output_df))
+        print("Sending current state dataframe with %d rows" % len(cur_state_df))
+        print("Sending visit output dataframe with %d rows" % len(visit_output_df))
 
         sink = pa.BufferOutputStream()
         writer = pa.ipc.new_file(sink, self.state_schema)
@@ -96,14 +94,12 @@ class SimpleJavaBehaviorModel:
 
         sink = pa.BufferOutputStream()
         writer = pa.ipc.new_file(sink, self.visit_output_schema)
-        batch = pa.record_batch(
-            visit_output_df, schema=self.visit_output_schema)
+        batch = pa.record_batch(visit_output_df, schema=self.visit_output_schema)
         writer.write_batch(batch)
         writer.close()
         visit_output_df_raw = sink.getvalue().to_pybytes()
 
-        self.gateway.entry_point.runBehaviorModel(
-            cur_state_df_raw, visit_output_df_raw)
+        self.gateway.entry_point.runBehaviorModel(cur_state_df_raw, visit_output_df_raw)
 
     def close(self):
         """Close the JVM Gateway."""

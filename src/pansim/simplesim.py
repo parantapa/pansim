@@ -5,14 +5,15 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import click
 from tqdm import tqdm
 
 from .simple_behavior import SimpleBehaviorModel
 from .simple_behavior_java import SimpleJavaBehaviorModel
 from .disease_model import DiseaseModel
-from . import cli
 
-@cli.command()
+
+@click.command()
 def simplesim():
     """Run the simulation."""
     num_ticks = int(os.environ["NUM_TICKS"])
@@ -35,7 +36,6 @@ def simplesim():
     it_1 = range(num_ticks)
     for tick in it_1:
         print("Starting tick %d" % tick)
-
         state_df = behavior_model.next_state_df
         visit_df = behavior_model.next_visit_df
 
@@ -48,7 +48,9 @@ def simplesim():
         it_2 = tqdm(it_2, desc="Transmission step", unit="location")
         visit_outputs = defaultdict(list)
         for lid, group in it_2:
-            visit_output = disease_model.compute_visit_output(group, behavior_model.attr_names, lid)
+            visit_output = disease_model.compute_visit_output(
+                group, behavior_model.attr_names, lid
+            )
             for k, v in visit_output.items():
                 visit_outputs[k].append(v)
         visit_outputs.default_factory = None
@@ -63,7 +65,9 @@ def simplesim():
         new_states = []
         for pid, group in it_3:
             cur_state = (state_df.at[pid, col] for col in columns)
-            new_state = disease_model.compute_progression_output(cur_state, group, tick_time)
+            new_state = disease_model.compute_progression_output(
+                cur_state, group, tick_time
+            )
             new_states.append(new_state)
         new_state_df = pd.DataFrame(new_states, columns=columns)
 
