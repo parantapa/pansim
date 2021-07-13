@@ -27,7 +27,6 @@ execute the following commands:
 
 .. code:: bash
 
-  $ cd ~/pansim
   $ conda env create -f environment.yml
 
 The above command creates a new conda environment called ``pansim``.
@@ -45,6 +44,39 @@ Test Pansim
 
 .. code:: bash
 
-  $ cd ~/pansim/tests
+  $ pansim --help
+
+
+
+
+  $ cd tests
   $ ./simplesim_test_cva_1.sh
+  $ ./
+
+
+Known Issues
+------------
+
+Executing Pansim shows error "undefined symbol: _ZSt28__throw_bad_array_new_lengthv"
+....................................................................................
+
+This is caused by differing versions of gcc/stdlib in conda compared to on the host system.
+Try the following set of commands:
+
+.. code:: bash
+
+  $ conda activate pansim
+  $ cd $CONDA_PREFIX/lib
+  $ mv libstdc++.so.6.0.28 libstdc++.so.6.0.28.old                                                                                      (pansi
+  $ ln -s /usr/lib64/libstdc++.so.6.0.29 libstdc++.so.6.0.28
+  $ cd ~/pansim
+  $ pip install -U -e .
+  $ pansim --help
+
+More details can be found at:
+
+* https://github.com/conda/conda/issues/10757
+  
+
+
 
