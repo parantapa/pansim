@@ -25,16 +25,14 @@ export VISIT_FILE_6="$INPUT_DIR/visit_6.csv"
 export LID_PARTITION="$INPUT_DIR/lid_partition.csv"
 export PID_PARTITION="$INPUT_DIR/pid_partition.csv"
 
-export OUTPUT_FILE="epicurve.csv"
+export OUTPUT_FILE="distsim_test_cva_epicurve.csv"
 
 export PER_NODE_BEHAVIOR=0
 export JAVA_BEHAVIOR=0
-
 
 N_CPUS=6
 export XACTOR_MAX_SEND_BUFFERS=$((4 * $N_CPUS))
 #export XACTOR_PROFILE_DIR=.
 
 TIMEFORMAT="Simulation runtime: %E"
-time mpiexec --mca mpi_yield_when_idle 1 -n $N_CPUS \
-    pansim distsim
+time mpiexec -n $N_CPUS pansim distsim

@@ -21,7 +21,7 @@ export VISIT_FILE_4="$INPUT_DIR/visit_4.csv"
 export VISIT_FILE_5="$INPUT_DIR/visit_5.csv"
 export VISIT_FILE_6="$INPUT_DIR/visit_6.csv"
 
-export OUTPUT_FILE="epicurve.csv"
+export OUTPUT_FILE="simplesim_test_cva_epicurve.csv"
 
 TIMEFORMAT="Simulation runtime: %E"
 time pansim simplesim
