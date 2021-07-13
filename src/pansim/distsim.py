@@ -52,12 +52,13 @@ def unserialize_df(raw):
 
 def df_scatter(df, scatter_col, col_rank, all_ranks, schema, dest_actor, dest_method):
     """Scatter the dataframe to all ranks."""
-    df["dest_rank"] = df[scatter_col].map(col_rank)
-
     rank_batch = {rank: None for rank in all_ranks}
-    for rank, group in df.groupby("dest_rank"):
-        batch = serialize_df(group, schema)
-        rank_batch[rank] = batch
+
+    if len(df.index):
+        df["dest_rank"] = df[scatter_col].map(col_rank)
+        for rank, group in df.groupby("dest_rank"):
+            batch = serialize_df(group, schema)
+            rank_batch[rank] = batch
 
     for rank, batch in rank_batch.items():
         msg = asys.Message(dest_method, args=[batch])
