@@ -3,11 +3,11 @@ PanSim: A Distributed Pandemic Simulator
 
 PanSim is a distributed pandemic simulator.
 
-Test Instructions
------------------
+Local Test Instructions
+-----------------------
 
-Clone Pansim
-............
+Step 1: Clone PanSim repository
+-------------------------------
 
 .. code:: bash
 
@@ -15,8 +15,8 @@ Clone Pansim
   $ git clone https://github.com/parantapa/pansim.git
   $ cd pansim
 
-Create a Anaconda environment
-.............................
+Step 2: Create a Anaconda environment
+.....................................
 
 To create a new virtual environment with conda,
 have Anaconda/Miniconda setup on your system.
@@ -31,28 +31,51 @@ execute the following commands:
 
 The above command creates a new conda environment called ``pansim``.
 
-Install PanSim in the environment
-.................................
+Step 3: Install PanSim in the environment
+.........................................
+
+PanSim can be installed using pip.
 
 .. code:: bash
 
   $ conda activate pansim
   $ pip install -U -e .
 
-Test Pansim
-...........
+Step 4: Test Pansim
+...................
+
+Executing the following command to figure if installation was successful.
 
 .. code:: bash
 
   $ pansim --help
 
+To run the simple tests using the serial and parallel version do the following.
 
-
+.. code:: bash
 
   $ cd tests
   $ ./simplesim_test_cva_1.sh
-  $ ./
+  $ ./distsim_test_cva_1.sh
 
+Local Test Instructions with Java
+---------------------------------
+
+Step 1: Compile the simple java behavior model using maven
+..........................................................
+
+.. code:: bash
+
+  $ mvn -U clean compile assembly:single
+
+Step 2: Run the simple tests (using java behavior model)
+........................................................
+
+.. code:: bash
+
+  $ cd tests
+  $ ./simplesim_java_test_cva_1.sh
+  $ ./distsim_java_test_cva_1.sh
 
 Known Issues
 ------------
@@ -76,7 +99,3 @@ Try the following set of commands:
 More details can be found at:
 
 * https://github.com/conda/conda/issues/10757
-  
-
-
-

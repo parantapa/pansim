@@ -1,5 +1,5 @@
 src/pansim/*.cpp
-.vim/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

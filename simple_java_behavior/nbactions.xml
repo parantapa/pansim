@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+        <action>
+            <actionName>run</actionName>
+            <packagings>
+                <packaging>jar</packaging>
+            </packagings>
+            <goals>
+                <goal>process-classes</goal>
+                <goal>org.codehaus.mojo:exec-maven-plugin:1.5.0:exec</goal>
+            </goals>
+            <properties>
+                <exec.args>-classpath %classpath edu.virginia.biocomplexity.pansim_behavior.PansimBehaviorGateway</exec.args>
+                <exec.executable>java</exec.executable>
+                <Env.SEED>42</Env.SEED>
+                <Env.NUM_TICKS>1</Env.NUM_TICKS>
+                <Env.MAX_VISITS>100</Env.MAX_VISITS>
+                <Env.VISUAL_ATTRIBUTES>attr1,attr2,attr3</Env.VISUAL_ATTRIBUTES>
+                <Env.START_STATE_FILE>/home/parantapa/start.csv</Env.START_STATE_FILE>
+                <Env.VISIT_FILE_0>/home/parantapa/visits.csv</Env.VISIT_FILE_0>
+            </properties>
+        </action>
+        <action>
+            <actionName>debug</actionName>
+            <packagings>
+                <packaging>jar</packaging>
+            </packagings>
+            <goals>
+                <goal>process-classes</goal>
+                <goal>org.codehaus.mojo:exec-maven-plugin:1.5.0:exec</goal>
+            </goals>
+            <properties>
+                <exec.args>-agentlib:jdwp=transport=dt_socket,server=n,address=${jpda.address} -classpath %classpath edu.virginia.biocomplexity.pansim_behavior.PansimBehaviorGateway</exec.args>
+                <exec.executable>java</exec.executable>
+                <jpda.listen>true</jpda.listen>
+            </properties>
+        </action>
+        <action>
+            <actionName>profile</actionName>
+            <packagings>
+                <packaging>jar</packaging>
+            </packagings>
+            <goals>
+                <goal>process-classes</goal>
+                <goal>org.codehaus.mojo:exec-maven-plugin:1.5.0:exec</goal>
+            </goals>
+            <properties>
+                <exec.args>-classpath %classpath edu.virginia.biocomplexity.pansim_behavior.PansimBehaviorGateway</exec.args>
+                <exec.executable>java</exec.executable>
+            </properties>
+        </action>
+    </actions>
