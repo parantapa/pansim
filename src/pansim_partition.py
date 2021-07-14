@@ -90,8 +90,14 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
     type=click.Path(exists=False, dir_okay=False, file_okay=True),
     help="The person parition output file.",
 )
-@click.option("-n", "--num-nodes", default=1, help="Number of nodes")
-@click.option("-c", "--num-cpu-per-node", default=2, help="Number of cpus per node")
+@click.option("-n", "--num-nodes", default=1, show_default=True, help="Number of nodes")
+@click.option(
+    "-c",
+    "--num-cpu-per-node",
+    default=2,
+    show_default=True,
+    help="Number of cpus per node",
+)
 @click.argument("visit-file", nargs=-1)
 def partition(
     location_partition, person_partition, num_nodes, num_cpu_per_node, visit_file
