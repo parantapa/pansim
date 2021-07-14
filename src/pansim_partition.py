@@ -79,13 +79,15 @@ def do_partition(visit_df, n_nodes, n_cpu_per_node):
 @click.option(
     "-l",
     "--location-partition",
-    type=click.Path(),
+    required=True,
+    type=click.Path(exists=False, dir_okay=False, file_okay=True),
     help="The location parititon output file.",
 )
 @click.option(
     "-p",
     "--person-partition",
-    type=click.Path(),
+    required=True,
+    type=click.Path(exists=False, dir_okay=False, file_okay=True),
     help="The person parition output file.",
 )
 @click.option("-n", "--num-nodes", default=1, help="Number of nodes")
@@ -95,6 +97,9 @@ def partition(
     location_partition, person_partition, num_nodes, num_cpu_per_node, visit_file
 ):
     """Parition the locations and persons onto cpus."""
+    if not len(visit_file):
+        raise click.UsageError("At least one visit file must be provided.")
+
     visit_df = []
     for fname in visit_file:
         print("Reading ", fname)

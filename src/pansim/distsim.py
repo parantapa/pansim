@@ -472,6 +472,6 @@ class MainActor:
 
 @click.command()
 def distsim():
-    """Run the simulation."""
+    """Run a distributed simulation."""
     logging.basicConfig(level=logging.INFO)
     asys.start(MAIN_AID, MainActor)

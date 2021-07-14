@@ -15,7 +15,7 @@ from .disease_model import DiseaseModel
 
 @click.command()
 def simplesim():
-    """Run the simulation."""
+    """Run a single process simulation."""
     num_ticks = int(os.environ["NUM_TICKS"])
     tick_time = int(os.environ["TICK_TIME"])
     output_file = os.environ["OUTPUT_FILE"]

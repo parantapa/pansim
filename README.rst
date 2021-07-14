@@ -6,7 +6,7 @@ PanSim is a distributed pandemic simulator.
 Local Test Instructions
 -----------------------
 
-Step 1: Clone PanSim repository
+* Step 1: Clone PanSim repository
 -------------------------------
 
 .. code:: bash
