@@ -1,6 +1,7 @@
 """Simple single threaded simulation."""
 
 import os
+import time
 import logging
 from collections import defaultdict
 
@@ -434,6 +435,8 @@ class MainActor:
 
         for rank in self.behav_ranks:
             asys.create_actor(rank, BEHAV_AID, BehaviorActor)
+
+        time.sleep(30)
 
         LOG.info("MainActor: Starting tick %d", self.cur_tick)
         for rank in self.behav_ranks:
