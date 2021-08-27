@@ -501,7 +501,11 @@ class MainActor:
 
         # Check if sim should still be running
         if self.cur_tick < self.num_ticks:
-            LOG.info("MainActor: Starting tick %d", self.cur_tick)
+            LOG.info(
+                "MainActor: Starting tick %d at %f",
+                self.cur_tick,
+                time.perf_counter() - PROCESS_START_TIME,
+            )
             for rank in self.behav_ranks:
                 asys.ActorProxy(rank, BEHAV_AID).start_tick()
             return
