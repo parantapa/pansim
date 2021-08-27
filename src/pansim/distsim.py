@@ -32,7 +32,7 @@ def timing(key: str):
     start = time.perf_counter()
     yield
     end = time.perf_counter()
-    LOG.info("#timimg# {%s} {%f}", key, end - start)
+    LOG.info("#timing# %s start=%f end=%f", key, start, end)
 
 
 def get_config():
@@ -464,7 +464,7 @@ class MainActor:
 
             time.sleep(30)
 
-        LOG.info("MainActor: Starting tick %d", self.cur_tick)
+        LOG.info("MainActor: Starting tick %d at %f", self.cur_tick, time.perf_counter())
         for rank in self.behav_ranks:
             asys.ActorProxy(rank, BEHAV_AID).start_tick()
 
@@ -504,4 +504,6 @@ class MainActor:
 def distsim():
     """Run a distributed simulation."""
     logging.basicConfig(level=logging.INFO)
+    LOG.info("Rank start: %f", time.perf_counter())
     asys.start(MAIN_AID, MainActor)
+    LOG.info("Rank finished: %f", time.perf_counter())
