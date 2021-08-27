@@ -26,13 +26,15 @@ CONFIG_AID = "config_actor"
 
 LOG = asys.getLogger(__name__)
 
+PROCESS_START_TIME = time.perf_counter()
+
 
 @contextmanager
 def timing(key: str):
-    start = time.perf_counter()
+    start = time.perf_counter() - PROCESS_START_TIME
     yield
-    end = time.perf_counter()
-    LOG.info("#timing# %s start=%f end=%f", key, start, end)
+    end = time.perf_counter() - PROCESS_START_TIME
+    LOG.info("#timing# %s start=%f duration=%f", key, start, end - start)
 
 
 def get_config():
@@ -104,7 +106,9 @@ class LocationActor:
 
         with timing("LocationActor:assemble_visits"):
             visit_df = [
-                unserialize_df(batch) for batch in self.visit_batches if batch is not None
+                unserialize_df(batch)
+                for batch in self.visit_batches
+                if batch is not None
             ]
             if visit_df:
                 visit_df = pd.concat(visit_df, axis=0)
@@ -114,7 +118,9 @@ class LocationActor:
         with timing("LocationActor:compute_visit_output"):
             visit_outputs = defaultdict(list)
             for lid, group in visit_df.groupby("lid"):
-                visit_output = disease_model.compute_visit_output(group, attr_names, lid)
+                visit_output = disease_model.compute_visit_output(
+                    group, attr_names, lid
+                )
                 for k, v in visit_output.items():
                     visit_outputs[k].append(v)
             visit_outputs.default_factory = None
@@ -202,7 +208,14 @@ class ProgressionActor:
 
         with timing("ProgressionActor:compute_next_state"):
             current_state_df = current_state_df.set_index("pid", drop=False)
-            columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
+            columns = [
+                "pid",
+                "group",
+                "current_state",
+                "next_state",
+                "dwell_time",
+                "seed",
+            ]
 
             new_states = []
             for pid, group in visit_output_df.groupby("pid"):
@@ -299,7 +312,6 @@ class BehaviorActor:
                 visit_output_df = pd.concat(visit_output_df, axis=0)
             else:
                 visit_output_df = get_config().empty_visit_output_df
-
 
         with timing("BehaviorActor:assemble_next_state"):
             new_state_df = [
@@ -464,7 +476,11 @@ class MainActor:
 
             time.sleep(30)
 
-        LOG.info("MainActor: Starting tick %d at %f", self.cur_tick, time.perf_counter())
+        LOG.info(
+            "MainActor: Starting tick %d at %f",
+            self.cur_tick,
+            time.perf_counter() - PROCESS_START_TIME,
+        )
         for rank in self.behav_ranks:
             asys.ActorProxy(rank, BEHAV_AID).start_tick()
 
@@ -504,6 +520,6 @@ class MainActor:
 def distsim():
     """Run a distributed simulation."""
     logging.basicConfig(level=logging.INFO)
-    LOG.info("Rank start: %f", time.perf_counter())
+    LOG.info("Rank start: %f", time.perf_counter() - PROCESS_START_TIME)
     asys.start(MAIN_AID, MainActor)
-    LOG.info("Rank finished: %f", time.perf_counter())
+    LOG.info("Rank finished: %f", time.perf_counter() - PROCESS_START_TIME)
