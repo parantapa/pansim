@@ -4,6 +4,7 @@ import os
 import time
 import logging
 from collections import defaultdict
+from contextlib import contextmanager
 
 import click
 import numpy as np
@@ -24,6 +25,14 @@ BEHAV_AID = "behavior_actor"
 CONFIG_AID = "config_actor"
 
 LOG = asys.getLogger(__name__)
+
+
+@contextmanager
+def timing(key: str):
+    start = time.perf_counter()
+    yield
+    end = time.perf_counter()
+    LOG.info("#timimg# {%s} {%f}", key, end - start)
 
 
 def get_config():
@@ -93,33 +102,36 @@ class LocationActor:
         pid_prog_rank = config.pid_prog_rank
         visit_output_schema = config.visit_output_schema
 
-        visit_df = [
-            unserialize_df(batch) for batch in self.visit_batches if batch is not None
-        ]
-        if visit_df:
-            visit_df = pd.concat(visit_df, axis=0)
-        else:
-            visit_df = get_config().empty_visit_df
+        with timing("LocationActor:assemble_visits"):
+            visit_df = [
+                unserialize_df(batch) for batch in self.visit_batches if batch is not None
+            ]
+            if visit_df:
+                visit_df = pd.concat(visit_df, axis=0)
+            else:
+                visit_df = get_config().empty_visit_df
 
-        visit_outputs = defaultdict(list)
-        for lid, group in visit_df.groupby("lid"):
-            visit_output = disease_model.compute_visit_output(group, attr_names, lid)
-            for k, v in visit_output.items():
-                visit_outputs[k].append(v)
-        visit_outputs.default_factory = None
-        visit_outputs = {k: np.hstack(vs) for k, vs in visit_outputs.items()}
-        visit_output_df = pd.DataFrame(visit_outputs)
+        with timing("LocationActor:compute_visit_output"):
+            visit_outputs = defaultdict(list)
+            for lid, group in visit_df.groupby("lid"):
+                visit_output = disease_model.compute_visit_output(group, attr_names, lid)
+                for k, v in visit_output.items():
+                    visit_outputs[k].append(v)
+            visit_outputs.default_factory = None
+            visit_outputs = {k: np.hstack(vs) for k, vs in visit_outputs.items()}
+            visit_output_df = pd.DataFrame(visit_outputs)
 
-        LOG.debug("LocationActor: Sending visit output to ProgressionActor")
-        df_scatter(
-            visit_output_df,
-            "pid",
-            pid_prog_rank,
-            asys.ranks(),
-            visit_output_schema,
-            PROG_AID,
-            "visit_output",
-        )
+        with timing("LocationActor:scatter_visit_output"):
+            LOG.debug("LocationActor: Sending visit output to ProgressionActor")
+            df_scatter(
+                visit_output_df,
+                "pid",
+                pid_prog_rank,
+                asys.ranks(),
+                visit_output_schema,
+                PROG_AID,
+                "visit_output",
+            )
 
         self.visit_batches = []
 
@@ -166,59 +178,64 @@ class ProgressionActor:
         state_schema = config.state_schema
         tick_time = config.tick_time
 
-        current_state_df = [
-            unserialize_df(batch)
-            for batch in self.current_state_batches
-            if batch is not None
-        ]
-        if current_state_df:
-            current_state_df = pd.concat(current_state_df, axis=0)
-        else:
-            current_state_df = get_config().empty_state_df
+        with timing("ProgressionActor:assemble_current_state"):
+            current_state_df = [
+                unserialize_df(batch)
+                for batch in self.current_state_batches
+                if batch is not None
+            ]
+            if current_state_df:
+                current_state_df = pd.concat(current_state_df, axis=0)
+            else:
+                current_state_df = get_config().empty_state_df
 
-        visit_output_df = [
-            unserialize_df(batch)
-            for batch in self.visit_output_batches
-            if batch is not None
-        ]
-        if visit_output_df:
-            visit_output_df = pd.concat(visit_output_df, axis=0)
-        else:
-            visit_output_df = get_config().empty_visit_output_df
+        with timing("ProgressionActor:assemble_visit_output"):
+            visit_output_df = [
+                unserialize_df(batch)
+                for batch in self.visit_output_batches
+                if batch is not None
+            ]
+            if visit_output_df:
+                visit_output_df = pd.concat(visit_output_df, axis=0)
+            else:
+                visit_output_df = get_config().empty_visit_output_df
 
-        current_state_df = current_state_df.set_index("pid", drop=False)
-        columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
+        with timing("ProgressionActor:compute_next_state"):
+            current_state_df = current_state_df.set_index("pid", drop=False)
+            columns = ["pid", "group", "current_state", "next_state", "dwell_time", "seed"]
 
-        new_states = []
-        for pid, group in visit_output_df.groupby("pid"):
-            cur_state = (current_state_df.at[pid, col] for col in columns)
-            new_state = disease_model.compute_progression_output(
-                cur_state, group, tick_time
+            new_states = []
+            for pid, group in visit_output_df.groupby("pid"):
+                cur_state = (current_state_df.at[pid, col] for col in columns)
+                new_state = disease_model.compute_progression_output(
+                    cur_state, group, tick_time
+                )
+                new_states.append(new_state)
+            new_state_df = pd.DataFrame(new_states, columns=columns)
+
+        with timing("ProgressionActor:scatter_next_state"):
+            LOG.debug("ProgressionActor: Send out new_state to BehaviorActor")
+            df_scatter(
+                new_state_df,
+                "pid",
+                pid_behav_rank,
+                behav_ranks,
+                state_schema,
+                BEHAV_AID,
+                "new_state",
             )
-            new_states.append(new_state)
-        new_state_df = pd.DataFrame(new_states, columns=columns)
 
-        LOG.debug("ProgressionActor: Send out new_state to BehaviorActor")
-        df_scatter(
-            new_state_df,
-            "pid",
-            pid_behav_rank,
-            behav_ranks,
-            state_schema,
-            BEHAV_AID,
-            "new_state",
-        )
-
-        LOG.debug("ProgressionActor: Send out visit_output to BehaviorActor")
-        df_scatter(
-            visit_output_df,
-            "pid",
-            pid_behav_rank,
-            behav_ranks,
-            visit_output_schema,
-            BEHAV_AID,
-            "visit_output",
-        )
+        with timing("ProgressionActor:scatter_visit_output"):
+            LOG.debug("ProgressionActor: Send out visit_output to BehaviorActor")
+            df_scatter(
+                visit_output_df,
+                "pid",
+                pid_behav_rank,
+                behav_ranks,
+                visit_output_schema,
+                BEHAV_AID,
+                "visit_output",
+            )
 
         self.current_state_batches = []
         self.visit_output_batches = []
@@ -234,15 +251,16 @@ class BehaviorActor:
         config = get_config()
         pid_behav_rank = config.pid_behav_rank
 
-        if config.java_behavior == 1:
-            LOG.info("BehaviorActor: Using Java behavior model")
-            self.behavior_model = SimpleJavaBehaviorModel()
-        else:
-            myrank = asys.current_rank()
-            pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
-            seed = config.seed + myrank
+        with timing("BehaviorActor:initalize_behavior_module"):
+            if config.java_behavior == 1:
+                LOG.info("BehaviorActor: Using Java behavior model")
+                self.behavior_model = SimpleJavaBehaviorModel()
+            else:
+                myrank = asys.current_rank()
+                pids = [pid for pid, rank in pid_behav_rank.items() if rank == myrank]
+                seed = config.seed + myrank
 
-            self.behavior_model = SimpleBehaviorModel(seed=seed, pids=pids)
+                self.behavior_model = SimpleBehaviorModel(seed=seed, pids=pids)
 
     def visit_output(self, visit_output_batch):
         """Get the visit outputs."""
@@ -271,32 +289,37 @@ class BehaviorActor:
         config = get_config()
         disease_model = config.disease_model
 
-        visit_output_df = [
-            unserialize_df(batch)
-            for batch in self.visit_output_batches
-            if batch is not None
-        ]
-        if visit_output_df:
-            visit_output_df = pd.concat(visit_output_df, axis=0)
-        else:
-            visit_output_df = get_config().empty_visit_output_df
+        with timing("BehaviorActor:assemble_visit_output"):
+            visit_output_df = [
+                unserialize_df(batch)
+                for batch in self.visit_output_batches
+                if batch is not None
+            ]
+            if visit_output_df:
+                visit_output_df = pd.concat(visit_output_df, axis=0)
+            else:
+                visit_output_df = get_config().empty_visit_output_df
 
-        new_state_df = [
-            unserialize_df(batch)
-            for batch in self.new_state_batches
-            if batch is not None
-        ]
-        if new_state_df:
-            new_state_df = pd.concat(new_state_df, axis=0)
-        else:
-            new_state_df = get_config().empty_state_df
 
-        self.behavior_model.run_behavior_model(new_state_df, visit_output_df)
+        with timing("BehaviorActor:assemble_next_state"):
+            new_state_df = [
+                unserialize_df(batch)
+                for batch in self.new_state_batches
+                if batch is not None
+            ]
+            if new_state_df:
+                new_state_df = pd.concat(new_state_df, axis=0)
+            else:
+                new_state_df = get_config().empty_state_df
 
-        LOG.debug("BehaviorActor: Sening epicurve row to main")
-        state_count = new_state_df.groupby("current_state").agg({"pid": len}).pid
-        epirow = [state_count.get(i, 0) for i in range(disease_model.n_states)]
-        asys.ActorProxy(asys.MASTER_RANK, MAIN_AID).end_tick(epirow)
+        with timing("BehaviorActor:run_behavior_model"):
+            self.behavior_model.run_behavior_model(new_state_df, visit_output_df)
+
+        with timing("BehaviorActor:share_epicurve_row"):
+            LOG.debug("BehaviorActor: Sening epicurve row to main")
+            state_count = new_state_df.groupby("current_state").agg({"pid": len}).pid
+            epirow = [state_count.get(i, 0) for i in range(disease_model.n_states)]
+            asys.ActorProxy(asys.MASTER_RANK, MAIN_AID).end_tick(epirow)
 
         self.visit_output_batches = []
         self.new_state_batches = []
@@ -312,29 +335,31 @@ class BehaviorActor:
         current_state_df = self.behavior_model.next_state_df
         visit_df = self.behavior_model.next_visit_df
 
-        LOG.debug("BehaviorActor: Sending out visit batches to LocationActor")
-        df_scatter(
-            visit_df,
-            "lid",
-            lid_rank,
-            asys.ranks(),
-            visit_schema,
-            LOC_AID,
-            "visit",
-        )
+        with timing("BehaviorActor:scatter_visits"):
+            LOG.debug("BehaviorActor: Sending out visit batches to LocationActor")
+            df_scatter(
+                visit_df,
+                "lid",
+                lid_rank,
+                asys.ranks(),
+                visit_schema,
+                LOC_AID,
+                "visit",
+            )
 
-        LOG.debug(
-            "BehaviorActor: Sending out current state batches to ProgressionActor"
-        )
-        df_scatter(
-            current_state_df,
-            "pid",
-            pid_prog_rank,
-            asys.ranks(),
-            state_schema,
-            PROG_AID,
-            "current_state",
-        )
+        with timing("BehaviorActor:scatter_state"):
+            LOG.debug(
+                "BehaviorActor: Sending out current state batches to ProgressionActor"
+            )
+            df_scatter(
+                current_state_df,
+                "pid",
+                pid_prog_rank,
+                asys.ranks(),
+                state_schema,
+                PROG_AID,
+                "current_state",
+            )
 
 
 def node_rank(node, cpu):
@@ -422,21 +447,22 @@ class MainActor:
 
     def main(self):
         """Run the simulation."""
-        for rank in asys.ranks():
-            asys.create_actor(
-                rank,
-                CONFIG_AID,
-                ConfigActor,
-                per_node_behavior=self.per_node_behavior,
-                java_behavior=self.java_behavior,
-            )
-            asys.create_actor(rank, LOC_AID, LocationActor)
-            asys.create_actor(rank, PROG_AID, ProgressionActor)
+        with timing("MainActor:actor_creation"):
+            for rank in asys.ranks():
+                asys.create_actor(
+                    rank,
+                    CONFIG_AID,
+                    ConfigActor,
+                    per_node_behavior=self.per_node_behavior,
+                    java_behavior=self.java_behavior,
+                )
+                asys.create_actor(rank, LOC_AID, LocationActor)
+                asys.create_actor(rank, PROG_AID, ProgressionActor)
 
-        for rank in self.behav_ranks:
-            asys.create_actor(rank, BEHAV_AID, BehaviorActor)
+            for rank in self.behav_ranks:
+                asys.create_actor(rank, BEHAV_AID, BehaviorActor)
 
-        time.sleep(30)
+            time.sleep(30)
 
         LOG.info("MainActor: Starting tick %d", self.cur_tick)
         for rank in self.behav_ranks:
@@ -464,11 +490,12 @@ class MainActor:
                 asys.ActorProxy(rank, BEHAV_AID).start_tick()
             return
 
-        # Sim has now ended
-        LOG.info("Writing epicurve to output file.")
-        columns = get_config().disease_model.model_dict["states"]
-        epi_df = pd.DataFrame(self.tick_epicurve, columns=columns)
-        epi_df.to_csv(self.output_file, index=False)
+        with timing("MainActor:writing_out_epicurve"):
+            # Sim has now ended
+            LOG.info("Writing epicurve to output file.")
+            columns = get_config().disease_model.model_dict["states"]
+            epi_df = pd.DataFrame(self.tick_epicurve, columns=columns)
+            epi_df.to_csv(self.output_file, index=False)
 
         asys.stop()
 
