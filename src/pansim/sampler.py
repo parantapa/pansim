@@ -1,8 +1,10 @@
 """Samplers for probability distributions."""
 
+
 from math import isclose
 
 from vose_sampler import VoseAlias
+from numpy.random import gamma
 
 
 class FixedSampler:
@@ -30,3 +32,13 @@ class CategoricalSampler(VoseAlias):
     def sample(self):
         """Return a sample from the distribution."""
         return self.alias_generation()
+
+class GammaDistributionSampler:
+    """A sampler that returns a value from a gamma distribution"""
+
+    def __init__(self, shape, scale):
+        self.shape = shape
+        self.scale = scale
+
+    def sample(self):
+        return round(gamma(self.shape, self.scale))

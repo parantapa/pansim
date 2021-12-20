@@ -5,7 +5,7 @@ import random
 import toml
 import numpy as np
 
-from .sampler import FixedSampler, CategoricalSampler
+from .sampler import FixedSampler, CategoricalSampler, GammaDistributionSampler
 
 # from .visit_computation_py import (
 #         compute_visit_output_py as compute_visit_output,
@@ -198,8 +198,12 @@ class DiseaseModel:
                 d = v1["value"]
                 d = FixedSampler(d)
                 distributions[dname] = d
+            elif v1["dist"] == "gamma":
+                shape, scale = v1["shape"], v1["scale"]
+                d = GammaDistributionSampler(shape, scale)
+                distributions[dname] = d
             else:
-                raise ValueError("Only distributions supported are: categorical, fixed")
+                raise ValueError("Only distributions supported are: categorical, fixed, gamma")
 
         # print(distributions)
         return distributions
